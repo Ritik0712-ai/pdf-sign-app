@@ -22,8 +22,8 @@ Project/
 │   │   ├── api/          # Axios setup
 │   │   ├── context/      # Auth context
 │   │   ├── layouts/      # Layout components
-│   │   ├── pages/       # Page components
-│   │   └── types/       # TypeScript types
+│   │   ├── pages/        # Page components
+│   │   └── types/        # TypeScript types
 │   └── ...
 │
 ├── backend/          # Express API
@@ -90,15 +90,19 @@ cp .env.example .env
 cd backend
 npm run dev
 
-# Terminal 2 - Frontend
+# Terminal 2 - Frontend  
 cd frontend
 npm run dev
 ```
 
-5. **Open the app**
+5. **Open the app in browser**
 
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:3001
+> **Note:** The app runs locally. After running `npm run dev` in both terminals, open your browser:
+
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:5173 |
+| Backend API | http://localhost:3001/api/health |
 
 ## Features
 
@@ -118,29 +122,53 @@ npm run dev
 | Week 1 | Day 1-7 | Foundation + Auth + Documents |
 | Week 2 | Day 8-14 | Signatures + Workflow + Polish |
 
-See [14-Day Implementation Plan](./14-Day%20Implementation%20Plan.docx) for full details.
+### Week 1: Foundation
+- **Day 1** ✅ Project Setup & Architecture (COMPLETED)
+- **Day 2** Authentication System (Supabase Auth + Google OAuth)
+- **Day 3** Database Schema & User Management
+- **Day 4** Document Upload System
+- **Day 5** Documents Dashboard
+- **Day 6** PDF Viewer Integration (react-pdf)
+- **Day 7** Testing & Buffer Day
+
+### Week 2: Signatures & Polish
+- **Day 8** Signature Placement Engine (dnd-kit)
+- **Day 9** Signature Database Integration
+- **Day 10** PDF Generation Engine (pdf-lib)
+- **Day 11** Public Signing Workflow
+- **Day 12** Audit Logs & Status System
+- **Day 13** UI Polish & Deployment
+- **Day 14** Final Testing & Project Delivery
 
 ## API Endpoints
 
 ### Auth
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login user
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/auth/register` | Register new user |
+| POST | `/api/auth/login` | Login user |
 
 ### Documents
-- `GET /api/documents` - List user's documents
-- `GET /api/documents/:id` - Get single document
-- `POST /api/documents/upload` - Upload new document
-- `DELETE /api/documents/:id` - Delete document
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/documents` | List user's documents |
+| GET | `/api/documents/:id` | Get single document |
+| POST | `/api/documents/upload` | Upload new document |
+| DELETE | `/api/documents/:id` | Delete document |
 
 ### Signatures
-- `POST /api/signatures` - Create signature placement
-- `GET /api/signatures/document/:id` - Get signatures for document
-- `PATCH /api/signatures/:id` - Update signature status
-- `POST /api/signatures/link` - Generate signing link
-- `GET /api/signatures/link/:token` - Validate signing token
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/signatures` | Create signature placement |
+| GET | `/api/signatures/document/:id` | Get signatures for document |
+| PATCH | `/api/signatures/:id` | Update signature status |
+| POST | `/api/signatures/link` | Generate signing link |
+| GET | `/api/signatures/link/:token` | Validate signing token |
 
 ### Audit
-- `GET /api/audit/:documentId` - Get audit logs
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/audit/:documentId` | Get audit logs |
 
 ## Critical Rules
 
