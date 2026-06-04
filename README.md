@@ -1,0 +1,155 @@
+# PDF Sign - Document Signature App
+
+A secure, full-stack web application for digital document signing — upload PDFs, place signatures, share signing links, and generate legally traceable signed PDFs.
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Frontend | React + TypeScript + Tailwind CSS + TanStack Query |
+| Backend | Node.js + Express + TypeScript |
+| Database | Supabase PostgreSQL |
+| Storage | Supabase Storage |
+| Auth | JWT |
+| PDF | react-pdf + pdf-lib |
+
+## Project Structure
+
+```
+Project/
+├── frontend/          # React application
+│   ├── src/
+│   │   ├── api/          # Axios setup
+│   │   ├── context/      # Auth context
+│   │   ├── layouts/      # Layout components
+│   │   ├── pages/       # Page components
+│   │   └── types/       # TypeScript types
+│   └── ...
+│
+├── backend/          # Express API
+│   ├── src/
+│   │   ├── config/       # Environment config
+│   │   ├── middleware/   # Auth, audit, error
+│   │   ├── routes/       # API routes
+│   │   └── types/        # TypeScript types
+│   └── ...
+│
+├── README.md
+└── .gitignore
+```
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- npm or yarn
+- Supabase account
+
+### Setup
+
+1. **Clone and install**
+
+```bash
+cd Project
+
+# Install backend dependencies
+cd backend
+npm install
+
+# Install frontend dependencies
+cd ../frontend
+npm install
+```
+
+2. **Setup Supabase**
+
+- Create a project at [supabase.com](https://supabase.com)
+- Run the SQL schema from `SUPABASE_SCHEMA.sql`
+- Create storage buckets: `documents`, `signatures`
+- Enable Row Level Security (RLS) on all tables
+
+3. **Configure environment**
+
+```bash
+# Backend
+cd backend
+cp .env.example .env
+# Edit .env with your Supabase credentials
+
+# Frontend
+cd ../frontend
+cp .env.example .env
+# Edit .env with your Supabase credentials
+```
+
+4. **Start development servers**
+
+```bash
+# Terminal 1 - Backend
+cd backend
+npm run dev
+
+# Terminal 2 - Frontend
+cd frontend
+npm run dev
+```
+
+5. **Open the app**
+
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:3001
+
+## Features
+
+- [x] User Authentication (JWT)
+- [x] PDF Upload
+- [x] Document Dashboard
+- [x] PDF Preview
+- [x] Signature Placement (drag & drop)
+- [x] Signing Links
+- [x] Audit Logs
+- [x] Status Tracking
+
+## 14-Day Build Plan
+
+| Week | Days | Focus |
+|------|------|-------|
+| Week 1 | Day 1-7 | Foundation + Auth + Documents |
+| Week 2 | Day 8-14 | Signatures + Workflow + Polish |
+
+See [14-Day Implementation Plan](./14-Day%20Implementation%20Plan.docx) for full details.
+
+## API Endpoints
+
+### Auth
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - Login user
+
+### Documents
+- `GET /api/documents` - List user's documents
+- `GET /api/documents/:id` - Get single document
+- `POST /api/documents/upload` - Upload new document
+- `DELETE /api/documents/:id` - Delete document
+
+### Signatures
+- `POST /api/signatures` - Create signature placement
+- `GET /api/signatures/document/:id` - Get signatures for document
+- `PATCH /api/signatures/:id` - Update signature status
+- `POST /api/signatures/link` - Generate signing link
+- `GET /api/signatures/link/:token` - Validate signing token
+
+### Audit
+- `GET /api/audit/:documentId` - Get audit logs
+
+## Critical Rules
+
+⚠️ **Coordinates**: Always store signature positions as percentages (0-100), never pixels.
+
+⚠️ **Signed PDFs**: Never overwrite the original — always generate a new signed version.
+
+⚠️ **Audit Logs**: Insert-only — never update or delete audit records.
+
+## License
+
+MIT
