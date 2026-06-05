@@ -146,7 +146,7 @@ npm run dev
 - **Day 7** Testing & Buffer Day
 
 ### Week 2: Signatures & Polish
-- **Day 8** Signature Placement Engine (dnd-kit)
+- **Day 8** ✅ Signature Placement Engine (dnd-kit)
 - **Day 9** Signature Database Integration
 - **Day 10** PDF Generation Engine (pdf-lib)
 - **Day 11** Public Signing Workflow
@@ -195,4 +195,4 @@ npm run dev
 
 ## License
 
-MIT
+MIT.
