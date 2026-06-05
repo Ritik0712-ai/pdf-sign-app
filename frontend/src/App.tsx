@@ -35,30 +35,29 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AuthCallback() {
-  const { user, loading } = useAuth();
-
   useEffect(() => {
     // Handle OAuth callback
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        // Store token and redirect to dashboard
-        localStorage.setItem('token', data.session.access_token);
+    const handleCallback = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        // Store the Supabase session token
+        localStorage.setItem('supabase_token', session.access_token);
+        // Redirect to dashboard
         window.location.href = '/dashboard';
       } else {
         window.location.href = '/login';
       }
-    });
+    };
+
+    handleCallback();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  return null;
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+    </div>
+  );
 }
 
 function AppRoutes() {

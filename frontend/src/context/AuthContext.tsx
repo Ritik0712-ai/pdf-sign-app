@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { authAPI } from '../api/axios';
+import { supabase } from '../api/supabase';
 
 interface User {
   id: string;
@@ -22,65 +23,76 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session
-    const token = localStorage.getItem('token');
-    if (token) {
-      authAPI.getMe()
-        .then((res) => {
+    const checkAuth = async () => {
+      try {
+        // Check Supabase session first (for Google OAuth)
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          setUser({
+            id: session.user.id,
+            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+            email: session.user.email || '',
+          });
+          setLoading(false);
+          return;
+        }
+
+        // Check our JWT token (for email/password)
+        const token = localStorage.getItem('token');
+        if (token) {
+          const res = await authAPI.getMe();
           if (res.data.success) {
             setUser(res.data.data.user);
           } else {
             localStorage.removeItem('token');
           }
-        })
-        .catch(() => {
-          localStorage.removeItem('token');
-        })
-        .finally(() => {
-          setLoading(false);
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser({
+          id: session.user.id,
+          name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+          email: session.user.email || '',
         });
-    } else {
-      setLoading(false);
-    }
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const signUp = async (name: string, email: string, password: string) => {
-    try {
-      const res = await authAPI.register(name, email, password);
-      if (res.data.success) {
-        localStorage.setItem('token', res.data.data.token);
-        setUser(res.data.data.user);
-      } else {
-        throw new Error(res.data.message || 'Registration failed');
-      }
-    } catch (error: unknown) {
-      if (error && typeof error === 'object' && 'response' in error) {
-        const err = error as { response?: { data?: { message?: string } } };
-        throw new Error(err.response?.data?.message || 'Registration failed');
-      }
-      throw error;
+    const res = await authAPI.register(name, email, password);
+    if (res.data.success) {
+      localStorage.setItem('token', res.data.data.token);
+      setUser(res.data.data.user);
+    } else {
+      throw new Error(res.data.message || 'Registration failed');
     }
   };
 
   const signIn = async (email: string, password: string) => {
-    try {
-      const res = await authAPI.login(email, password);
-      if (res.data.success) {
-        localStorage.setItem('token', res.data.data.token);
-        setUser(res.data.data.user);
-      } else {
-        throw new Error(res.data.message || 'Login failed');
-      }
-    } catch (error: unknown) {
-      if (error && typeof error === 'object' && 'response' in error) {
-        const err = error as { response?: { data?: { message?: string } } };
-        throw new Error(err.response?.data?.message || 'Login failed');
-      }
-      throw error;
+    const res = await authAPI.login(email, password);
+    if (res.data.success) {
+      localStorage.setItem('token', res.data.data.token);
+      setUser(res.data.data.user);
+    } else {
+      throw new Error(res.data.message || 'Login failed');
     }
   };
 
   const signOut = async () => {
+    await supabase.auth.signOut();
     localStorage.removeItem('token');
     setUser(null);
   };
