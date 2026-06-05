@@ -13,6 +13,8 @@ import SigningSuccess from './pages/SigningSuccess';
 import SigningRejected from './pages/SigningRejected';
 import AuditLogs from './pages/AuditLogs';
 import Profile from './pages/Profile';
+import { useEffect } from 'react';
+import { supabase } from './api/supabase';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -20,7 +22,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
@@ -33,6 +35,19 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
+  // Handle OAuth callback
+  useEffect(() => {
+    const handleAuthCallback = async () => {
+      const hash = window.location.hash;
+      if (hash) {
+        // Clear the hash after processing
+        window.location.hash = '';
+      }
+    };
+
+    handleAuthCallback();
+  }, []);
+
   return (
     <Routes>
       {/* Public routes */}

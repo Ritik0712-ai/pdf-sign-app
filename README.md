@@ -10,7 +10,7 @@ A secure, full-stack web application for digital document signing — upload PDF
 | Backend | Node.js + Express + TypeScript |
 | Database | Supabase PostgreSQL |
 | Storage | Supabase Storage |
-| Auth | JWT |
+| Auth | Supabase Auth + JWT |
 | PDF | react-pdf + pdf-lib |
 
 ## Project Structure
@@ -19,7 +19,7 @@ A secure, full-stack web application for digital document signing — upload PDF
 Project/
 ├── frontend/          # React application
 │   ├── src/
-│   │   ├── api/          # Axios setup
+│   │   ├── api/          # Axios + Supabase setup
 │   │   ├── context/      # Auth context
 │   │   ├── layouts/      # Layout components
 │   │   ├── pages/        # Page components
@@ -28,7 +28,7 @@ Project/
 │
 ├── backend/          # Express API
 │   ├── src/
-│   │   ├── config/       # Environment config
+│   │   ├── config/       # Environment + Supabase config
 │   │   ├── middleware/   # Auth, audit, error
 │   │   ├── routes/       # API routes
 │   │   └── types/        # TypeScript types
@@ -75,12 +75,17 @@ npm install
 # Backend
 cd backend
 cp .env.example .env
-# Edit .env with your Supabase credentials
+# Edit .env with your Supabase credentials:
+# - SUPABASE_URL
+# - SUPABASE_SERVICE_ROLE_KEY
+# - JWT_SECRET
 
 # Frontend
 cd ../frontend
 cp .env.example .env
-# Edit .env with your Supabase credentials
+# Edit .env with your Supabase credentials:
+# - VITE_SUPABASE_URL
+# - VITE_SUPABASE_ANON_KEY
 ```
 
 4. **Start development servers**
@@ -106,11 +111,14 @@ npm run dev
 
 ## Features
 
-- [x] User Authentication (JWT)
-- [x] PDF Upload
+- [x] User Authentication (Supabase Auth + JWT)
+- [x] Email Registration & Login
+- [x] Google OAuth Integration
+- [x] Protected Routes
+- [x] PDF Upload (coming Day 4)
 - [x] Document Dashboard
-- [x] PDF Preview
-- [x] Signature Placement (drag & drop)
+- [x] PDF Preview (coming Day 6)
+- [x] Signature Placement (drag & drop) (coming Day 8)
 - [x] Signing Links
 - [x] Audit Logs
 - [x] Status Tracking
@@ -123,8 +131,8 @@ npm run dev
 | Week 2 | Day 8-14 | Signatures + Workflow + Polish |
 
 ### Week 1: Foundation
-- **Day 1** ✅ Project Setup & Architecture (COMPLETED)
-- **Day 2** Authentication System (Supabase Auth + Google OAuth)
+- **Day 1** ✅ Project Setup & Architecture
+- **Day 2** ✅ Authentication System (Supabase Auth)
 - **Day 3** Database Schema & User Management
 - **Day 4** Document Upload System
 - **Day 5** Documents Dashboard
@@ -147,6 +155,7 @@ npm run dev
 |--------|----------|-------------|
 | POST | `/api/auth/register` | Register new user |
 | POST | `/api/auth/login` | Login user |
+| GET | `/api/auth/me` | Get current user |
 
 ### Documents
 | Method | Endpoint | Description |

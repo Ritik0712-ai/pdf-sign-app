@@ -8,14 +8,17 @@ const navItems = [
 ];
 
 export default function Layout() {
-  const { user, logout } = useAuth();
+  const { user, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await signOut();
     navigate('/');
   };
+
+  // Get user metadata or email for display
+  const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -45,12 +48,12 @@ export default function Layout() {
 
         <div className="absolute bottom-4 left-4 right-4">
           <div className="mb-3 px-4 py-2 bg-gray-100 rounded-lg">
-            <p className="font-medium text-sm">{user?.name}</p>
-            <p className="text-xs text-gray-500">{user?.email}</p>
+            <p className="font-medium text-sm">{userName}</p>
+            <p className="text-xs text-gray-500 truncate">{user?.email}</p>
           </div>
           <button
             onClick={handleLogout}
-            className="w-full px-4 py-2 text-sm font-medium text-danger hover:bg-red-50 rounded-lg transition-colors"
+            className="w-full px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
           >
             Logout
           </button>
