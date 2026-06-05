@@ -88,6 +88,14 @@ cp .env.example .env
 # - VITE_SUPABASE_ANON_KEY
 ```
 
+### Supabase API Keys Reference
+
+| Key | Where to Use |
+|-----|--------------|
+| **Project URL** | Both `.env` files as `SUPABASE_URL` / `VITE_SUPABASE_URL` |
+| **anon public key** | Frontend `.env` as `VITE_SUPABASE_ANON_KEY` |
+| **service_role key** | Backend `.env` as `SUPABASE_SERVICE_ROLE_KEY` |
+
 4. **Start development servers**
 
 ```bash
@@ -101,8 +109,6 @@ npm run dev
 ```
 
 5. **Open the app in browser**
-
-> **Note:** The app runs locally. After running `npm run dev` in both terminals, open your browser:
 
 | Service | URL |
 |---------|-----|
