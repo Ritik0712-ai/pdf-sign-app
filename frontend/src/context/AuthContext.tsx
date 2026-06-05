@@ -45,22 +45,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = async (name: string, email: string, password: string) => {
-    const res = await authAPI.register(name, email, password);
-    if (res.data.success) {
-      localStorage.setItem('token', res.data.data.token);
-      setUser(res.data.data.user);
-    } else {
-      throw new Error(res.data.message || 'Registration failed');
+    try {
+      const res = await authAPI.register(name, email, password);
+      if (res.data.success) {
+        localStorage.setItem('token', res.data.data.token);
+        setUser(res.data.data.user);
+      } else {
+        throw new Error(res.data.message || 'Registration failed');
+      }
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const err = error as { response?: { data?: { message?: string } } };
+        throw new Error(err.response?.data?.message || 'Registration failed');
+      }
+      throw error;
     }
   };
 
   const signIn = async (email: string, password: string) => {
-    const res = await authAPI.login(email, password);
-    if (res.data.success) {
-      localStorage.setItem('token', res.data.data.token);
-      setUser(res.data.data.user);
-    } else {
-      throw new Error(res.data.message || 'Login failed');
+    try {
+      const res = await authAPI.login(email, password);
+      if (res.data.success) {
+        localStorage.setItem('token', res.data.data.token);
+        setUser(res.data.data.user);
+      } else {
+        throw new Error(res.data.message || 'Login failed');
+      }
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const err = error as { response?: { data?: { message?: string } } };
+        throw new Error(err.response?.data?.message || 'Login failed');
+      }
+      throw error;
     }
   };
 

@@ -19,22 +19,27 @@ router.post('/register', async (req, res) => {
       throw new AppError('Password must be at least 6 characters', 400);
     }
 
-    // Create user in Supabase Auth
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    // Create user via sign up
+    const { data, error } = await supabaseAdmin.auth.signUp({
       email,
       password,
-      user_metadata: {
-        name,
+      options: {
+        data: {
+          name,
+        },
       },
-      email_confirm: true,
     });
 
-    if (authError) {
-      console.error('Supabase Auth error:', authError);
-      throw new AppError(authError.message || 'Failed to create user', 400);
+    if (error) {
+      console.error('Supabase Auth error:', error);
+      throw new AppError(error.message || 'Failed to create user', 400);
     }
 
-    const user = authData.user;
+    if (!data.user) {
+      throw new AppError('Failed to create user', 500);
+    }
+
+    const user = data.user;
 
     // Generate JWT
     const token = jwt.sign(
@@ -48,7 +53,7 @@ router.post('/register', async (req, res) => {
       data: {
         user: {
           id: user.id,
-          name: user.user_metadata?.name || name,
+          name: name,
           email: user.email,
         },
         token,
@@ -74,17 +79,21 @@ router.post('/login', async (req, res) => {
       throw new AppError('Email and password are required', 400);
     }
 
-    // Sign in with Supabase Auth
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.signInWithPassword({
+    // Sign in with email/password
+    const { data, error } = await supabaseAdmin.auth.signInWithPassword({
       email,
       password,
     });
 
-    if (authError) {
+    if (error) {
       throw new AppError('Invalid credentials', 401);
     }
 
-    const user = authData.user;
+    if (!data.user) {
+      throw new AppError('Login failed', 500);
+    }
+
+    const user = data.user;
 
     // Generate JWT
     const token = jwt.sign(
@@ -127,19 +136,21 @@ router.get('/me', async (req, res) => {
     const decoded = jwt.verify(token, config.jwt.secret) as { userId: string };
 
     // Get user from Supabase Auth
-    const { data: user, error } = await supabaseAdmin.auth.admin.getUserById(decoded.userId);
+    const { data: userData, error } = await supabaseAdmin.auth.getUserById(decoded.userId);
 
-    if (error || !user.user) {
+    if (error || !userData.user) {
       throw new AppError('User not found', 404);
     }
+
+    const user = userData.user;
 
     res.json({
       success: true,
       data: {
         user: {
-          id: user.user.id,
-          name: user.user.user_metadata?.name || user.user.email?.split('@')[0],
-          email: user.user.email,
+          id: user.id,
+          name: user.user_metadata?.name || user.email?.split('@')[0],
+          email: user.email,
         },
       },
     });
