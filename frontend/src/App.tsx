@@ -13,8 +13,6 @@ import SigningSuccess from './pages/SigningSuccess';
 import SigningRejected from './pages/SigningRejected';
 import AuditLogs from './pages/AuditLogs';
 import Profile from './pages/Profile';
-import { useEffect } from 'react';
-import { supabase } from './api/supabase';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -35,19 +33,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
-  // Handle OAuth callback
-  useEffect(() => {
-    const handleAuthCallback = async () => {
-      const hash = window.location.hash;
-      if (hash) {
-        // Clear the hash after processing
-        window.location.hash = '';
-      }
-    };
-
-    handleAuthCallback();
-  }, []);
-
   return (
     <Routes>
       {/* Public routes */}
