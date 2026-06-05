@@ -1,5 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { useEffect } from 'react';
+import { supabase } from './api/supabase';
 import Layout from './layouts/Layout';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
@@ -32,6 +34,33 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function AuthCallback() {
+  const { user, loading } = useAuth();
+
+  useEffect(() => {
+    // Handle OAuth callback
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        // Store token and redirect to dashboard
+        localStorage.setItem('token', data.session.access_token);
+        window.location.href = '/dashboard';
+      } else {
+        window.location.href = '/login';
+      }
+    });
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -39,6 +68,7 @@ function AppRoutes() {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/sign/:token" element={<SigningPage />} />
       <Route path="/sign/success" element={<SigningSuccess />} />
       <Route path="/sign/rejected" element={<SigningRejected />} />
