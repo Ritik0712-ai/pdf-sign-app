@@ -1,14 +1,28 @@
 import { Router } from 'express';
 import { supabaseAdmin } from '../config/supabase.js';
 import { AppError } from '../middleware/error.js';
-import { authenticate } from '../middleware/auth.js';
 
 const router = Router();
 
-// Get current user profile
-router.get('/', authenticate, async (req, res) => {
+// Get current user profile - uses Supabase token
+router.get('/', async (req, res) => {
   try {
-    const userId = (req as any).user.id;
+    // Get user from Supabase token in Authorization header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new AppError('No token provided', 401);
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    // Verify the token with Supabase
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
+    if (authError || !user) {
+      throw new AppError('Invalid token', 401);
+    }
+
+    const userId = user.id;
 
     const { data: profile, error } = await supabaseAdmin
       .from('user_profiles')
@@ -35,9 +49,22 @@ router.get('/', authenticate, async (req, res) => {
 });
 
 // Update user profile
-router.patch('/', authenticate, async (req, res) => {
+router.patch('/', async (req, res) => {
   try {
-    const userId = (req as any).user.id;
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new AppError('No token provided', 401);
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
+    if (authError || !user) {
+      throw new AppError('Invalid token', 401);
+    }
+
+    const userId = user.id;
     const { name, avatar_url, phone, company } = req.body;
 
     const { data: profile, error } = await supabaseAdmin

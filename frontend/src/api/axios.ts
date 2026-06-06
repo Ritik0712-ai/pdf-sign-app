@@ -1,19 +1,20 @@
 import axios from 'axios';
+import { supabase } from './supabase';
 
 const API_URL = 'http://localhost:3001/api';
 
-export const api = axios.create({
+const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Add token to requests if available
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+// Add Supabase token to requests if available
+api.interceptors.request.use(async (config) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    config.headers.Authorization = `Bearer ${session.access_token}`;
   }
   return config;
 });
@@ -28,3 +29,5 @@ export const authAPI = {
   
   getMe: () => api.get('/auth/me'),
 };
+
+export { api };
