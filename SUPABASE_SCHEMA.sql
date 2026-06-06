@@ -1,14 +1,16 @@
 -- ============================================
--- PDF Sign App - Complete Database Schema
--- Run this in Supabase SQL Editor
+-- PDF Sign App - Single-Pass Database Setup
+-- Safe to run multiple times (idempotent)
 -- ============================================
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ============================================
--- USER PROFILES TABLE
+-- TABLES
 -- ============================================
+
+-- USER PROFILES TABLE
 CREATE TABLE IF NOT EXISTS public.user_profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
@@ -20,9 +22,7 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- ============================================
 -- DOCUMENTS TABLE
--- ============================================
 CREATE TABLE IF NOT EXISTS public.documents (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     owner_id UUID NOT NULL REFERENCES public.user_profiles(id) ON DELETE CASCADE,
@@ -36,9 +36,7 @@ CREATE TABLE IF NOT EXISTS public.documents (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- ============================================
 -- SIGNATURES TABLE
--- ============================================
 CREATE TABLE IF NOT EXISTS public.signatures (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     document_id UUID NOT NULL REFERENCES public.documents(id) ON DELETE CASCADE,
@@ -55,9 +53,7 @@ CREATE TABLE IF NOT EXISTS public.signatures (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- ============================================
 -- SIGNING LINKS TABLE
--- ============================================
 CREATE TABLE IF NOT EXISTS public.signing_links (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     document_id UUID NOT NULL REFERENCES public.documents(id) ON DELETE CASCADE,
@@ -70,9 +66,7 @@ CREATE TABLE IF NOT EXISTS public.signing_links (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- ============================================
 -- AUDIT LOGS TABLE
--- ============================================
 CREATE TABLE IF NOT EXISTS public.audit_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     document_id UUID NOT NULL REFERENCES public.documents(id) ON DELETE CASCADE,
@@ -102,6 +96,26 @@ ALTER TABLE public.signatures ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.signing_links ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
+-- ============================================
+-- DROP ALL EXISTING POLICIES (idempotent)
+-- ============================================
+DO $$
+DECLARE
+  p RECORD;
+BEGIN
+  FOR p IN
+    SELECT policyname, tablename
+    FROM pg_policies
+    WHERE schemaname = 'public'
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON %I', p.policyname, p.tablename);
+  END LOOP;
+END $$;
+
+-- ============================================
+-- RECREATE ALL POLICIES (once, after drop)
+-- ============================================
+
 -- User Profiles Policies
 CREATE POLICY "Users can view own profile" ON public.user_profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users can update own profile" ON public.user_profiles FOR UPDATE USING (auth.uid() = id);
@@ -129,6 +143,8 @@ CREATE POLICY "System can insert audit logs" ON public.audit_logs FOR INSERT WIT
 -- ============================================
 -- FUNCTIONS
 -- ============================================
+
+-- Auto-create profile on signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -138,8 +154,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
+-- Update timestamp function
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -148,5 +166,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_user_profiles_updated_at ON public.user_profiles;
 CREATE TRIGGER update_user_profiles_updated_at BEFORE UPDATE ON public.user_profiles FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_documents_updated_at ON public.documents;
 CREATE TRIGGER update_documents_updated_at BEFORE UPDATE ON public.documents FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
