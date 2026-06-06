@@ -4,18 +4,15 @@ import { AppError } from '../middleware/error.js';
 
 const router = Router();
 
-// Get current user profile - uses Supabase token
+// Get current user profile - creates profile if not exists
 router.get('/', async (req, res) => {
   try {
-    // Get user from Supabase token in Authorization header
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       throw new AppError('No token provided', 401);
     }
 
     const token = authHeader.split(' ')[1];
-
-    // Verify the token with Supabase
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
 
     if (authError || !user) {
@@ -24,14 +21,33 @@ router.get('/', async (req, res) => {
 
     const userId = user.id;
 
-    const { data: profile, error } = await supabaseAdmin
+    // Check if profile exists
+    let { data: profile, error } = await supabaseAdmin
       .from('user_profiles')
       .select('*')
       .eq('id', userId)
       .single();
 
+    // If no profile, create one
     if (error || !profile) {
-      throw new AppError('Profile not found', 404);
+      const name = user.user_metadata?.name || user.email?.split('@')[0] || 'User';
+      const { data: newProfile, error: createError } = await supabaseAdmin
+        .from('user_profiles')
+        .insert({
+          id: userId,
+          name: name,
+          email: user.email,
+          avatar_url: user.user_metadata?.avatar_url || null,
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        console.error('Create profile error:', createError);
+        throw new AppError('Failed to create profile', 500);
+      }
+
+      profile = newProfile;
     }
 
     res.json({
@@ -57,7 +73,6 @@ router.patch('/', async (req, res) => {
     }
 
     const token = authHeader.split(' ')[1];
-
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
 
     if (authError || !user) {
