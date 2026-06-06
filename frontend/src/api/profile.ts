@@ -1,4 +1,4 @@
-import api from './axios';
+import { api } from './axios';
 
 export const profileAPI = {
   getProfile: () => api.get('/profile'),
