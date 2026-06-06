@@ -5,6 +5,7 @@ const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: '📊' },
   { path: '/dashboard/documents', label: 'Documents', icon: '📄' },
   { path: '/dashboard/upload', label: 'Upload', icon: '⬆️' },
+  { path: '/dashboard/profile', label: 'Profile', icon: '👤' },
 ];
 
 export default function Layout() {
