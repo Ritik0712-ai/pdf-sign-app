@@ -1,20 +1,21 @@
 -- ============================================
 -- PDF Sign App - Supabase Database Schema
--- Run this in your Supabase SQL Editor
+-- Day 3: Updated for Supabase Auth integration
 -- ============================================
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ============================================
--- USERS TABLE
+-- USER PROFILES TABLE
 -- ============================================
-CREATE TABLE IF NOT EXISTS public.users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE IF NOT EXISTS public.user_profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
+    email VARCHAR(255) NOT NULL,
     avatar_url TEXT,
+    phone VARCHAR(20),
+    company VARCHAR(100),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -24,7 +25,7 @@ CREATE TABLE IF NOT EXISTS public.users (
 -- ============================================
 CREATE TABLE IF NOT EXISTS public.documents (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    owner_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    owner_id UUID NOT NULL REFERENCES public.user_profiles(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
     original_file_url TEXT NOT NULL,
     signed_file_url TEXT,
@@ -41,10 +42,12 @@ CREATE TABLE IF NOT EXISTS public.documents (
 CREATE TABLE IF NOT EXISTS public.signatures (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     document_id UUID NOT NULL REFERENCES public.documents(id) ON DELETE CASCADE,
-    signer_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
+    signer_id UUID REFERENCES public.user_profiles(id) ON DELETE SET NULL,
     page_number INTEGER NOT NULL,
     x_percent DECIMAL(5,2) NOT NULL CHECK (x_percent >= 0 AND x_percent <= 100),
     y_percent DECIMAL(5,2) NOT NULL CHECK (y_percent >= 0 AND y_percent <= 100),
+    width_percent DECIMAL(5,2) DEFAULT 20.00,
+    height_percent DECIMAL(5,2) DEFAULT 10.00,
     signature_type VARCHAR(20) DEFAULT 'typed' CHECK (signature_type IN ('typed', 'image', 'drawn')),
     signature_value TEXT,
     status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'signed', 'rejected')),
@@ -63,7 +66,7 @@ CREATE TABLE IF NOT EXISTS public.signing_links (
     signer_email VARCHAR(255),
     expires_at TIMESTAMP WITH TIME ZONE,
     is_active BOOLEAN DEFAULT TRUE,
-    created_by UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    created_by UUID NOT NULL REFERENCES public.user_profiles(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -73,7 +76,7 @@ CREATE TABLE IF NOT EXISTS public.signing_links (
 CREATE TABLE IF NOT EXISTS public.audit_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     document_id UUID NOT NULL REFERENCES public.documents(id) ON DELETE CASCADE,
-    actor_user_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
+    actor_user_id UUID REFERENCES public.user_profiles(id) ON DELETE SET NULL,
     action VARCHAR(100) NOT NULL,
     ip_address VARCHAR(100),
     user_agent TEXT,
@@ -100,18 +103,21 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON public.audit_logs(create
 -- ============================================
 
 -- Enable RLS on all tables
-ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.signatures ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.signing_links ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
--- Users: Users can only see their own data
-CREATE POLICY "Users can view own profile" ON public.users
+-- User Profiles: Users can view/update their own profile
+CREATE POLICY "Users can view own profile" ON public.user_profiles
     FOR SELECT USING (auth.uid() = id);
 
-CREATE POLICY "Users can update own profile" ON public.users
+CREATE POLICY "Users can update own profile" ON public.user_profiles
     FOR UPDATE USING (auth.uid() = id);
+
+CREATE POLICY "Users can insert own profile" ON public.user_profiles
+    FOR INSERT WITH CHECK (auth.uid() = id);
 
 -- Documents: Owners can do everything
 CREATE POLICY "Owners can view their documents" ON public.documents
@@ -163,20 +169,16 @@ CREATE POLICY "System can insert audit logs" ON public.audit_logs
     FOR INSERT WITH CHECK (true);
 
 -- ============================================
--- STORAGE BUCKETS (Run in Supabase Dashboard)
+-- STORAGE BUCKETS
 -- ============================================
--- Go to Storage > New Bucket
--- Create buckets:
--- 1. "documents" (public: false)
--- 2. "signatures" (public: false)
--- 
--- Add storage policies:
--- INSERT into storage.buckets (name, id, public) VALUES ('documents', 'documents', false);
--- INSERT into storage.buckets (name, id, public) VALUES ('signatures', 'signatures', false);
+-- Run these in Supabase Dashboard > Storage:
+-- Create buckets: "documents", "signatures"
 
 -- ============================================
--- FUNCTION: Update timestamp
+-- FUNCTIONS
 -- ============================================
+
+-- Update timestamp function
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -185,9 +187,30 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Apply trigger to tables
-CREATE TRIGGER update_users_updated_at
-    BEFORE UPDATE ON public.users
+-- Auto-create profile on user signup
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO public.user_profiles (id, name, email, avatar_url)
+    VALUES (
+        NEW.id,
+        COALESCE(NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
+        NEW.email,
+        NEW.raw_user_meta_data->>'avatar_url'
+    );
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger to auto-create profile
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Apply triggers to tables
+CREATE TRIGGER update_user_profiles_updated_at
+    BEFORE UPDATE ON public.user_profiles
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 CREATE TRIGGER update_documents_updated_at

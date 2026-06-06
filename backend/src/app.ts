@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import { config } from './config/index.js';
 import { errorHandler } from './middleware/error.js';
 import authRoutes from './routes/auth.js';
+import profileRoutes from './routes/profile.js';
 import documentRoutes from './routes/documents.js';
 import signatureRoutes from './routes/signatures.js';
 import auditRoutes from './routes/audit.js';
@@ -23,6 +24,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/profile', profileRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/signatures', signatureRoutes);
 app.use('/api/audit', auditRoutes);
