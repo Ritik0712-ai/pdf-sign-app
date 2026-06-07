@@ -1,119 +1,155 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { api } from '../api/axios';
-import type { Document, DocumentStatus } from '../types';
+import { getDocuments, deleteDocument, Document } from '../api/documents';
 
 export default function Documents() {
-  const [filter, setFilter] = useState<DocumentStatus | 'all'>('all');
-  const [search, setSearch] = useState('');
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const { data: documentsData, isLoading } = useQuery({
-    queryKey: ['documents'],
-    queryFn: async () => {
-      const response = await api.get('/api/documents');
-      return response.data.data as Document[];
-    },
-  });
+  useEffect(() => {
+    loadDocuments();
+  }, []);
 
-  const documents = (documentsData || [])
-    .filter(doc => filter === 'all' || doc.status === filter)
-    .filter(doc => doc.title.toLowerCase().includes(search.toLowerCase()));
+  const loadDocuments = async () => {
+    try {
+      setLoading(true);
+      const docs = await getDocuments();
+      setDocuments(docs);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load documents');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this document?')) return;
+
+    try {
+      setDeletingId(id);
+      await deleteDocument(id);
+      setDocuments(documents.filter(doc => doc.id !== id));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to delete document');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  const getStatusBadge = (status: Document['status']) => {
+    const styles = {
+      draft: 'bg-gray-100 text-gray-700',
+      pending: 'bg-yellow-100 text-yellow-700',
+      signed: 'bg-green-100 text-green-700',
+      rejected: 'bg-red-100 text-red-700',
+      expired: 'bg-orange-100 text-orange-700',
+    };
+    return styles[status] || styles.draft;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Documents</h1>
-          <p className="text-gray-600 mt-1">Manage all your documents</p>
-        </div>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">My Documents</h1>
         <Link
           to="/dashboard/upload"
-          className="px-6 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary-hover transition-colors"
+          className="px-4 py-2 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition-colors"
         >
-          ⬆️ Upload
+          + Upload New
         </Link>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm mb-6 flex gap-4">
-        <input
-          type="text"
-          placeholder="Search documents..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-        />
-        <select
-          value={filter}
-          onChange={(e) => setFilter(e.target.value as DocumentStatus | 'all')}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-        >
-          <option value="all">All</option>
-          <option value="draft">Draft</option>
-          <option value="pending">Pending</option>
-          <option value="signed">Signed</option>
-          <option value="rejected">Rejected</option>
-        </select>
-      </div>
-
-      {/* Documents List */}
-      {isLoading ? (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">
+          {error}
         </div>
-      ) : documents.length === 0 ? (
-        <div className="bg-white rounded-xl p-12 border border-gray-200 shadow-sm text-center">
-          <div className="text-5xl mb-4">📭</div>
-          <p className="text-gray-500">No documents found</p>
+      )}
+
+      {documents.length === 0 ? (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
+          <div className="text-5xl mb-4">📄</div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">No documents yet</h2>
+          <p className="text-gray-500 mb-6">Upload your first PDF to get started</p>
+          <Link
+            to="/dashboard/upload"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition-colors"
+          >
+            📤 Upload Document
+          </Link>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="text-left px-6 py-4 font-semibold text-gray-600">Document</th>
-                <th className="text-left px-6 py-4 font-semibold text-gray-600">Status</th>
-                <th className="text-left px-6 py-4 font-semibold text-gray-600">Pages</th>
-                <th className="text-left px-6 py-4 font-semibold text-gray-600">Created</th>
-                <th className="text-left px-6 py-4 font-semibold text-gray-600">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {documents.map((doc) => (
-                <tr key={doc.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary">📄</div>
-                      <span className="font-medium">{doc.title}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      doc.status === 'signed' ? 'bg-green-100 text-green-700' :
-                      doc.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                      doc.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                      'bg-gray-100 text-gray-700'
-                    }`}>
-                      {doc.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-gray-600">{doc.total_pages}</td>
-                  <td className="px-6 py-4 text-gray-600">
-                    {new Date(doc.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4">
-                    <Link
-                      to={`/dashboard/documents/${doc.id}`}
-                      className="text-primary font-medium hover:underline"
-                    >
-                      View
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid gap-4">
+          {documents.map((doc) => (
+            <div
+              key={doc.id}
+              className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-center gap-4">
+                {/* PDF Icon */}
+                <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                  <span className="text-2xl">📄</span>
+                </div>
+
+                {/* Document Info */}
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-gray-900 truncate">{doc.title}</h3>
+                  <div className="flex items-center gap-3 text-sm text-gray-500 mt-1">
+                    <span>{formatFileSize(doc.file_size)}</span>
+                    <span>•</span>
+                    <span>{doc.total_pages} page{doc.total_pages !== 1 ? 's' : ''}</span>
+                    <span>•</span>
+                    <span>{formatDate(doc.created_at)}</span>
+                  </div>
+                </div>
+
+                {/* Status Badge */}
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadge(doc.status)}`}>
+                  {doc.status.charAt(0).toUpperCase() + doc.status.slice(1)}
+                </span>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2">
+                  <Link
+                    to={`/dashboard/documents/${doc.id}`}
+                    className="px-3 py-2 text-sm font-medium text-primary hover:bg-blue-50 rounded-lg transition-colors"
+                  >
+                    View
+                  </Link>
+                  <button
+                    onClick={() => handleDelete(doc.id)}
+                    disabled={deletingId === doc.id}
+                    className="px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {deletingId === doc.id ? 'Deleting...' : 'Delete'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

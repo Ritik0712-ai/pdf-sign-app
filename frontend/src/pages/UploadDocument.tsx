@@ -1,130 +1,197 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../api/axios';
+import { uploadDocument } from '../api/documents';
 
 export default function UploadDocument() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
-  const [dragActive, setDragActive] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+  const [dragOver, setDragOver] = useState(false);
 
-  const uploadMutation = useMutation({
-    mutationFn: async (data: { title: string; fileUrl: string; totalPages: number; fileSize: number }) => {
-      const response = await api.post('/api/documents/upload', data);
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['documents'] });
-      navigate('/dashboard/documents');
-    },
-  });
-
-  const handleFile = (selectedFile: File) => {
-    if (selectedFile.type !== 'application/pdf') {
-      alert('Only PDF files are allowed');
+  const handleFileSelect = (file: File) => {
+    // Validate file type
+    if (file.type !== 'application/pdf') {
+      setError('Please select a PDF file');
       return;
     }
-    if (selectedFile.size > 10 * 1024 * 1024) {
-      alert('File size must be less than 10MB');
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setError('File must be less than 10MB');
       return;
     }
-    setFile(selectedFile);
+
+    setSelectedFile(file);
+    setError('');
+
+    // Auto-fill title from filename if empty
     if (!title) {
-      setTitle(selectedFile.name.replace('.pdf', ''));
+      const fileName = file.name.replace('.pdf', '');
+      setTitle(fileName);
     }
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    setDragActive(false);
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile) handleFile(droppedFile);
+    setDragOver(false);
+
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      handleFileSelect(file);
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    if (!file || !title) return;
-    
-    // Mock upload - in production, upload to Supabase Storage
-    const mockUrl = `https://storage.example.com/documents/${crypto.randomUUID()}.pdf`;
-    uploadMutation.mutate({
-      title,
-      fileUrl: mockUrl,
-      totalPages: 1,
-      fileSize: file.size,
-    });
+    setDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setDragOver(false);
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileSelect(file);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!selectedFile || !title) {
+      setError('Please select a file and enter a title');
+      return;
+    }
+
+    setUploading(true);
+    setError('');
+
+    try {
+      const document = await uploadDocument(selectedFile, title);
+      navigate('/dashboard/documents');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Upload failed');
+      setUploading(false);
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Upload Document</h1>
-        <p className="text-gray-600 mt-1">Upload a PDF to get started</p>
-      </div>
+    <div className="max-w-2xl mx-auto">
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">Upload Document</h1>
 
-      <form onSubmit={handleSubmit} className="max-w-2xl">
-        {/* Drop Zone */}
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
-          onDragLeave={() => setDragActive(false)}
-          onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all mb-6 ${
-            dragActive ? 'border-primary bg-primary/5' : 'border-gray-300 hover:border-primary'
-          }`}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf"
-            onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
-            className="hidden"
-          />
-          <div className="text-5xl mb-4">📄</div>
-          <p className="text-lg font-medium text-gray-700 mb-2">
-            {file ? file.name : 'Drop your PDF here or click to browse'}
-          </p>
-          <p className="text-sm text-gray-500">Maximum file size: 10MB</p>
-        </div>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">
+            {error}
+          </div>
+        )}
 
-        {/* Title */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Document Title</label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-            placeholder="Enter document title"
-          />
-        </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Drop Zone */}
+          <div
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onClick={() => fileInputRef.current?.click()}
+            className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-colors ${
+              dragOver
+                ? 'border-primary bg-blue-50'
+                : 'border-gray-300 hover:border-primary hover:bg-gray-50'
+            }`}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,application/pdf"
+              onChange={handleFileInputChange}
+              className="hidden"
+            />
 
-        {/* Actions */}
-        <div className="flex gap-4">
+            {selectedFile ? (
+              <div className="flex items-center justify-center gap-3">
+                <span className="text-3xl">📄</span>
+                <div className="text-left">
+                  <p className="font-medium text-gray-900">{selectedFile.name}</p>
+                  <p className="text-sm text-gray-500">{formatFileSize(selectedFile.size)}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedFile(null);
+                    setTitle('');
+                  }}
+                  className="ml-4 text-red-500 hover:text-red-700"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="text-4xl mb-4">📤</div>
+                <p className="text-lg font-medium text-gray-700">
+                  Drag and drop your PDF here
+                </p>
+                <p className="text-sm text-gray-500 mt-2">
+                  or click to browse • PDF only • Max 10MB
+                </p>
+              </>
+            )}
+          </div>
+
+          {/* Title Input */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Document Title
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+              placeholder="Enter document title"
+            />
+          </div>
+
+          {/* Upload Button */}
           <button
             type="submit"
-            disabled={!file || !title || uploadMutation.isPending}
-            className="px-6 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary-hover transition-colors disabled:opacity-50"
+            disabled={!selectedFile || !title || uploading}
+            className="w-full py-3 bg-primary hover:bg-primary-hover text-white font-semibold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {uploadMutation.isPending ? 'Uploading...' : 'Upload Document'}
+            {uploading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="animate-spin">⏳</span>
+                Uploading...
+              </span>
+            ) : (
+              'Upload Document'
+            )}
           </button>
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
-          >
-            Cancel
-          </button>
-        </div>
+        </form>
+      </div>
 
-        {uploadMutation.isError && (
-          <p className="mt-4 text-danger">Upload failed. Please try again.</p>
-        )}
-      </form>
+      {/* Instructions */}
+      <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
+        <h3 className="font-medium text-blue-900 mb-2">📋 Tips:</h3>
+        <ul className="text-sm text-blue-700 space-y-1">
+          <li>• Only PDF files are accepted</li>
+          <li>• Maximum file size is 10MB</li>
+          <li>• After upload, you can add signature fields</li>
+        </ul>
+      </div>
     </div>
   );
 }
