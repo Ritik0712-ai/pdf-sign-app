@@ -1,6 +1,6 @@
 -- ============================================
--- PDF Sign App - Complete Database Setup
--- Safe to run multiple times (idempotent)
+-- PDF Sign App - Complete Database Setup (FIXED)
+-- Run this in Supabase SQL Editor
 -- ============================================
 
 -- Enable UUID extension
