@@ -4,6 +4,36 @@ import { AppError } from '../middleware/error.js';
 
 const router = Router();
 
+// Helper to get or create user profile
+async function getOrCreateProfile(userId: string, userEmail: string, userName: string) {
+  let { data: profile, error } = await supabaseAdmin
+    .from('user_profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
+
+  if (error || !profile) {
+    // Create profile if doesn't exist
+    const { data: newProfile, error: createError } = await supabaseAdmin
+      .from('user_profiles')
+      .insert({
+        id: userId,
+        name: userName || userEmail.split('@')[0],
+        email: userEmail,
+      })
+      .select()
+      .single();
+
+    if (createError) {
+      console.error('Error creating profile:', createError);
+      throw new AppError('Failed to create user profile', 500);
+    }
+    profile = newProfile;
+  }
+
+  return profile;
+}
+
 // Get all documents for user
 router.get('/', async (req, res) => {
   try {
@@ -102,10 +132,17 @@ router.post('/', async (req, res) => {
       throw new AppError('Title and file URL are required', 400);
     }
 
+    // Get or create user profile
+    const profile = await getOrCreateProfile(
+      user.id,
+      user.email || '',
+      user.user_metadata?.name || ''
+    );
+
     const { data: document, error } = await supabaseAdmin
       .from('documents')
       .insert({
-        owner_id: user.id,
+        owner_id: profile.id,
         title,
         original_file_url,
         file_size: file_size || 0,
@@ -117,7 +154,7 @@ router.post('/', async (req, res) => {
 
     if (error) {
       console.error('Create document error:', error);
-      throw new AppError('Failed to create document', 500);
+      throw new AppError('Failed to create document: ' + error.message, 500);
     }
 
     res.status(201).json({
