@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
+import { Document, Page, pdf } from 'react-pdf';
 import { getDocument } from '../api/documents';
+
+import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
+import 'react-pdf/dist/esm/Page/TextLayer.css';
 
 export default function DocumentDetail() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const [document, setDocument] = useState<Document | null>(null);
   const [loading, setLoading] = useState(true);
-  const [document, setDocument] = useState<any>(null);
   const [error, setError] = useState('');
+  const [numPages, setNumPages] = useState<number>(0);
 
   useEffect(() => {
     if (id) {
@@ -17,6 +21,10 @@ export default function DocumentDetail() {
         .finally(() => setLoading(false));
     }
   }, [id]);
+
+  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+    setNumPages(numPages);
+  };
 
   if (loading) {
     return (
@@ -39,12 +47,12 @@ export default function DocumentDetail() {
 
   return (
     <div>
-      <div className="flex justify-between items-start mb-8">
+      <div className="flex justify-between items-start mb-6">
         <div>
           <Link to="/dashboard/documents" className="text-sm text-gray-500 hover:text-primary mb-2 inline-block">
             ← Back to Documents
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900">{document.title}</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{document.title}</h1>
           <p className="text-gray-600 mt-1">
             Created {new Date(document.created_at).toLocaleDateString()}
           </p>
@@ -59,22 +67,32 @@ export default function DocumentDetail() {
         </span>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-        <h2 className="text-lg font-semibold mb-4">Document Details</h2>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-sm text-gray-500">File Size</p>
-            <p className="font-medium">{(document.file_size / 1024 / 1024).toFixed(2)} MB</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-500">Pages</p>
-            <p className="font-medium">{document.total_pages}</p>
-          </div>
-        </div>
-        
-        <div className="mt-6 p-4 bg-gray-100 rounded-xl">
-          <p className="text-sm text-gray-500 mb-2">File URL</p>
-          <p className="text-sm break-all">{document.original_file_url}</p>
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="max-h-[70vh] overflow-auto flex flex-col items-center bg-gray-100 p-4">
+          <Document
+            file={document.original_file_url}
+            onLoadSuccess={onDocumentLoadSuccess}
+            onLoadError={(err) => console.error('PDF load error:', err)}
+            loading={
+              <div className="flex justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+              </div>
+            }
+            error={
+              <div className="text-center py-12">
+                <p className="text-red-500">Failed to load PDF</p>
+              </div>
+            }
+          >
+            {Array.from(new Array(numPages), (el, index) => (
+              <Page
+                key={`page_${index + 1}`}
+                pageNumber={index + 1}
+                width={800}
+                className="mb-4 shadow-lg"
+              />
+            ))}
+          </Document>
         </div>
       </div>
     </div>
