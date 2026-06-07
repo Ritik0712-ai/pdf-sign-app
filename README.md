@@ -140,7 +140,7 @@ npm run dev
 - **Day 1** ✅ Project Setup & Architecture
 - **Day 2** ✅ Authentication System (Supabase Auth)
 - **Day 3** Database Schema & User Management
-- **Day 4** Document Upload System
+- **Day 4** ✅ Document Upload System
 - **Day 5** Documents Dashboard
 - **Day 6** PDF Viewer Integration (react-pdf)
 - **Day 7** Testing & Buffer Day
