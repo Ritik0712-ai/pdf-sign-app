@@ -1,20 +1,27 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { api } from '../api/axios';
-import type { Document, DashboardStats } from '../types';
+import { getDocuments } from '../api/documents';
 
 export default function Dashboard() {
-  const { data: documentsData } = useQuery({
-    queryKey: ['documents'],
-    queryFn: async () => {
-      const response = await api.get('/api/documents');
-      return response.data.data as Document[];
-    },
-  });
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const documents = documentsData || [];
-  
-  const stats: DashboardStats = {
+  useEffect(() => {
+    loadDocuments();
+  }, []);
+
+  const loadDocuments = async () => {
+    try {
+      const docs = await getDocuments();
+      setDocuments(docs);
+    } catch (err) {
+      console.error('Failed to load documents:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const stats = {
     total: documents.length,
     pending: documents.filter(d => d.status === 'pending').length,
     signed: documents.filter(d => d.status === 'signed').length,
@@ -22,6 +29,14 @@ export default function Dashboard() {
   };
 
   const recentDocs = documents.slice(0, 5);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -32,24 +47,42 @@ export default function Dashboard() {
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-6 mb-8">
-        {[
-          { label: 'Total Documents', value: stats.total, color: 'bg-primary' },
-          { label: 'Pending', value: stats.pending, color: 'bg-warning' },
-          { label: 'Signed', value: stats.signed, color: 'bg-success' },
-          { label: 'Rejected', value: stats.rejected, color: 'bg-danger' },
-        ].map((stat, i) => (
-          <div key={i} className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-            <div className="flex items-center gap-4">
-              <div className={`w-12 h-12 ${stat.color} rounded-xl flex items-center justify-center text-white text-xl`}>
-                {i === 0 ? '📄' : i === 1 ? '⏳' : i === 2 ? '✅' : '❌'}
-              </div>
-              <div>
-                <p className="text-3xl font-bold">{stat.value}</p>
-                <p className="text-sm text-gray-500">{stat.label}</p>
-              </div>
+        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center text-white text-xl">📄</div>
+            <div>
+              <p className="text-3xl font-bold">{stats.total}</p>
+              <p className="text-sm text-gray-500">Total Documents</p>
             </div>
           </div>
-        ))}
+        </div>
+        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-yellow-500 rounded-xl flex items-center justify-center text-white text-xl">⏳</div>
+            <div>
+              <p className="text-3xl font-bold">{stats.pending}</p>
+              <p className="text-sm text-gray-500">Pending</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center text-white text-xl">✅</div>
+            <div>
+              <p className="text-3xl font-bold">{stats.signed}</p>
+              <p className="text-sm text-gray-500">Signed</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-red-500 rounded-xl flex items-center justify-center text-white text-xl">❌</div>
+            <div>
+              <p className="text-3xl font-bold">{stats.rejected}</p>
+              <p className="text-sm text-gray-500">Rejected</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Quick Actions */}

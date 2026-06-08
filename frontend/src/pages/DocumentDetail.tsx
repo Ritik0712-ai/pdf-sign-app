@@ -48,14 +48,22 @@ export default function DocumentDetail() {
             Created {new Date(document.created_at).toLocaleDateString()}
           </p>
         </div>
-        <span className={`px-4 py-2 rounded-full text-sm font-medium ${
-          document.status === 'signed' ? 'bg-green-100 text-green-700' :
-          document.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-          document.status === 'rejected' ? 'bg-red-100 text-red-700' :
-          'bg-gray-100 text-gray-700'
-        }`}>
-          {document.status}
-        </span>
+        <div className="flex gap-2">
+          <Link
+            to={`/dashboard/documents/${id}/editor`}
+            className="px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-hover transition-colors"
+          >
+            ✍️ Place Signatures
+          </Link>
+          <span className={`px-4 py-2 rounded-full text-sm font-medium ${
+            document.status === 'signed' ? 'bg-green-100 text-green-700' :
+            document.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+            document.status === 'rejected' ? 'bg-red-100 text-red-700' :
+            'bg-gray-100 text-gray-700'
+          }`}>
+            {document.status}
+          </span>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
