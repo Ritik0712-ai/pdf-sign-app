@@ -25,16 +25,16 @@ export default function SignatureEditor() {
   const loadData = async () => {
     try {
       setLoading(true);
+      setError('');
       const doc = await getDocument(id!);
       setDocument(doc);
       
       const sigs = await getSignaturesByDocument(id!);
       setSignatures(sigs);
       
-      // Estimate total pages from document
       setTotalPages(doc.total_pages || 1);
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -59,7 +59,7 @@ export default function SignatureEditor() {
         signature_type: 'typed',
       });
       
-      setSignatures([...signatures, newSig]);
+      setSignatures(prev => [...prev, newSig]);
       setPlacingMode(false);
     } catch (err: any) {
       setError(err.message);
@@ -73,7 +73,7 @@ export default function SignatureEditor() {
 
     try {
       await deleteSignature(sigId);
-      setSignatures(signatures.filter(s => s.id !== sigId));
+      setSignatures(prev => prev.filter(s => s.id !== sigId));
     } catch (err: any) {
       setError(err.message);
     }
@@ -97,10 +97,10 @@ export default function SignatureEditor() {
     );
   }
 
-  if (error || !document) {
+  if (error && !document) {
     return (
       <div className="text-center py-12">
-        <p className="text-red-500">{error || 'Document not found'}</p>
+        <p className="text-red-500">{error}</p>
         <Link to="/dashboard/documents" className="text-primary hover:underline mt-4 inline-block">
           Back to Documents
         </Link>
@@ -116,7 +116,7 @@ export default function SignatureEditor() {
           <Link to="/dashboard/documents" className="text-sm text-gray-500 hover:text-primary mb-2 inline-block">
             ← Back to Documents
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900">Place Signatures: {document.title}</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Place Signatures: {document?.title || 'Document'}</h1>
         </div>
         <button
           onClick={() => setPlacingMode(!placingMode)}
@@ -126,16 +126,21 @@ export default function SignatureEditor() {
               : 'bg-primary text-white hover:bg-primary-hover'
           }`}
         >
-          {placingMode ? '✕ Cancel Placing' : '✍️ Place Signature'}
+          {placingMode ? '✕ Cancel' : '✍️ Place Signature'}
         </button>
       </div>
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          {error}
+        </div>
+      )}
 
       {/* Instructions */}
       {placingMode && (
         <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
           <p className="text-blue-800">
-            <strong>Click on the PDF</strong> to place a signature field at that position.
-            The position will be saved as a percentage.
+            <strong>Click on the PDF</strong> to place a signature field!
           </p>
         </div>
       )}
@@ -159,7 +164,7 @@ export default function SignatureEditor() {
           ))}
         </div>
         <span className="text-sm text-gray-500 ml-4">
-          {signatures.filter(s => s.page_number === currentPage).length} signatures on this page
+          {signatures.filter(s => s.page_number === currentPage).length} signatures
         </span>
       </div>
 
@@ -168,17 +173,18 @@ export default function SignatureEditor() {
         <div
           ref={containerRef}
           onClick={handleContainerClick}
-          className={`relative bg-gray-100 min-h-[600px] ${
+          className={`relative bg-gray-100 ${
             placingMode ? 'cursor-crosshair' : ''
           }`}
-          style={{ height: '80vh' }}
+          style={{ height: '70vh' }}
         >
-          {/* PDF iframe */}
-          <iframe
-            src={document.original_file_url}
-            className="w-full h-full"
-            title="Document PDF"
-          />
+          {document?.original_file_url && (
+            <iframe
+              src={document.original_file_url}
+              className="w-full h-full"
+              title="Document PDF"
+            />
+          )}
 
           {/* Signature Markers */}
           {signatures.map(sig => {
@@ -192,10 +198,10 @@ export default function SignatureEditor() {
                   sig.status === 'signed' 
                     ? 'border-green-500 bg-green-100' 
                     : 'border-red-500 bg-red-100'
-                } rounded flex items-center justify-center text-xs font-medium`}
+                } rounded flex items-center justify-center text-xs font-medium z-10`}
                 style={pos}
               >
-                <div className="text-center">
+                <div className="text-center p-1">
                   <div>{sig.status === 'signed' ? '✓ Signed' : '📝 Signature'}</div>
                   <button
                     onClick={(e) => {
@@ -213,7 +219,7 @@ export default function SignatureEditor() {
 
           {/* Placing Indicator */}
           {placingMode && (
-            <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+            <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium z-20">
               Click to place signature
             </div>
           )}
@@ -223,7 +229,7 @@ export default function SignatureEditor() {
       {/* Save Indicator */}
       {saving && (
         <div className="fixed bottom-4 right-4 bg-primary text-white px-4 py-2 rounded-lg shadow-lg">
-          Saving signature...
+          Saving...
         </div>
       )}
     </div>

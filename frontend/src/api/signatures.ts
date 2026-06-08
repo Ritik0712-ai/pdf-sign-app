@@ -24,7 +24,7 @@ export async function getSignaturesByDocument(documentId: string): Promise<Signa
     throw new Error(response.data.message || 'Failed to fetch signatures');
   }
 
-  return response.data.data.signatures;
+  return response.data.data.signatures || [];
 }
 
 // Create signature placement
@@ -36,7 +36,6 @@ export async function createSignature(data: {
   width_percent?: number;
   height_percent?: number;
   signature_type?: 'typed' | 'image' | 'drawn';
-  signer_name?: string;
 }): Promise<Signature> {
   const response = await api.post('/api/signatures', data);
   
@@ -94,7 +93,6 @@ export async function signSignature(id: string, value: string): Promise<Signatur
   const response = await api.patch(`/api/signatures/${id}`, {
     status: 'signed',
     signature_value: value,
-    signed_at: new Date().toISOString(),
   });
   
   if (!response.data.success) {
