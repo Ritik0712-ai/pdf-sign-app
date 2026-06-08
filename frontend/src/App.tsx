@@ -10,6 +10,7 @@ import Dashboard from './pages/Dashboard';
 import Documents from './pages/Documents';
 import UploadDocument from './pages/UploadDocument';
 import DocumentDetail from './pages/DocumentDetail';
+import SignatureEditor from './pages/SignatureEditor';
 import SigningPage from './pages/SigningPage';
 import SigningSuccess from './pages/SigningSuccess';
 import SigningRejected from './pages/SigningRejected';
@@ -84,8 +85,9 @@ function AppRoutes() {
         <Route index element={<Dashboard />} />
         <Route path="documents" element={<Documents />} />
         <Route path="upload" element={<UploadDocument />} />
-        <Route path="documents/:id" element={<DocumentDetail />} />
-        <Route path="audit/:documentId" element={<AuditLogs />} />
+<Route path="documents/:id" element={<DocumentDetail />} />
+<Route path="documents/:id/editor" element={<SignatureEditor />} />
+<Route path="audit/:documentId" element={<AuditLogs />} />
         <Route path="profile" element={<Profile />} />
       </Route>
 
