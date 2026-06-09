@@ -24,7 +24,7 @@ export async function uploadDocument(file: File, title: string): Promise<Documen
   const filename = `${userId}/${Date.now()}.${ext}`;
 
   // Upload file to Supabase Storage
-  const { data: uploadData, error: uploadError } = await supabase.storage
+  const { error: uploadError } = await supabase.storage
     .from('documents')
     .upload(filename, file, {
       cacheControl: '3600',
@@ -82,4 +82,15 @@ export async function deleteDocument(id: string): Promise<void> {
   if (!response.data.success) {
     throw new Error(response.data.message || 'Failed to delete document');
   }
+}
+
+// Update document status
+export async function updateDocumentStatus(id: string, status: string): Promise<Document> {
+  const response = await api.patch(`/documents/${id}`, { status });
+  
+  if (!response.data.success) {
+    throw new Error(response.data.message || 'Failed to update document status');
+  }
+
+  return response.data.data.document;
 }

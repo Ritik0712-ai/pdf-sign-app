@@ -2,14 +2,18 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { authAPI } from '../api/axios';
 import { supabase } from '../api/supabase';
 
-interface User {
+export interface AppUser {
   id: string;
   name: string;
   email: string;
+  user_metadata?: {
+    name?: string;
+    avatar_url?: string;
+  };
 }
 
 interface AuthContextType {
-  user: User | null;
+  user: AppUser | null;
   loading: boolean;
   signUp: (name: string, email: string, password: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
@@ -19,7 +23,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,7 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session?.user) {
           setUser({
             id: session.user.id,
-            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+            name: (session.user.user_metadata as any)?.name || session.user.email?.split('@')[0] || 'User',
             email: session.user.email || '',
           });
           setLoading(false);
@@ -62,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.user) {
         setUser({
           id: session.user.id,
-          name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+          name: (session.user.user_metadata as any)?.name || session.user.email?.split('@')[0] || 'User',
           email: session.user.email || '',
         });
       }

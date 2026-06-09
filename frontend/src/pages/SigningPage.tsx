@@ -1,54 +1,67 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '../api/axios';
-import type { SigningLink, Signature } from '../types';
+import { updateDocumentStatus } from '../api/documents';
 
 export default function SigningPage() {
   const { token } = useParams<{ token: string }>();
   const [signatureText, setSignatureText] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
   const [signed, setSigned] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [linkData, setLinkData] = useState<any>(null);
+  const [error, setError] = useState('');
+  const [signing, setSigning] = useState(false);
 
-  const { data: linkData, isLoading, error } = useQuery({
-    queryKey: ['signing-link', token],
-    queryFn: async () => {
-      const response = await api.get(`/api/signatures/link/${token}`);
-      return response.data.data as SigningLink;
-    },
-    enabled: !!token,
-  });
+  // Fetch link data on mount
+  useEffect(() => {
+    if (token) {
+      fetchLinkData();
+    }
+  }, [token]);
 
-  const signMutation = useMutation({
-    mutationFn: async (data: { token: string; signatureValue: string }) => {
-      // In production, this would finalize the signing
-      return api.patch(`/api/signatures/${data.token}`, {
-        status: 'signed',
-        signatureValue: data.signatureValue,
-      });
-    },
-    onSuccess: () => {
-      setSigned(true);
-    },
-  });
-
-  const rejectMutation = useMutation({
-    mutationFn: async () => {
-      return api.patch(`/api/signatures/${token}`, {
-        status: 'rejected',
-      });
-    },
-    onSuccess: () => {
-      window.location.href = '/sign/rejected';
-    },
-  });
-
-  const handleSign = () => {
-    if (!signatureText.trim() || !token) return;
-    signMutation.mutate({ token, signatureValue: signatureText });
+  const fetchLinkData = async () => {
+    try {
+      const response = await api.get(`/signatures/link/${token}`);
+      if (response.data.success) {
+        setLinkData(response.data.data);
+      } else {
+        setError(response.data.message || 'Link not found');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to load document');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (isLoading) {
+  const handleSign = async () => {
+    if (!signatureText.trim() || !linkData?.signatures?.length) return;
+    
+    setSigning(true);
+    try {
+      // Sign all pending signatures for this document
+      for (const sig of linkData.signatures) {
+        await api.patch(`/signatures/${sig.id}`, {
+          status: 'signed',
+          signatureValue: signatureText,
+        });
+      }
+      
+      // Update document status to 'signed'
+      await api.patch(`/documents/${linkData.document_id}`, {
+        status: 'signed'
+      });
+      
+      setSigned(true);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to sign');
+    } finally {
+      setSigning(false);
+    }
+  };
+
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -56,13 +69,13 @@ export default function SigningPage() {
     );
   }
 
-  if (error || !linkData) {
+  if (error && !linkData) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-5xl mb-4">🔗</div>
+          <div className="text-5xl mb-4">��</div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Invalid Link</h1>
-          <p className="text-gray-600">This signing link is invalid or has expired.</p>
+          <p className="text-gray-600">{error}</p>
         </div>
       </div>
     );
@@ -92,31 +105,66 @@ export default function SigningPage() {
       <header className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <h1 className="text-xl font-bold text-primary">PDF Sign</h1>
-          <p className="text-gray-600">Signing as <span className="font-medium">{linkData.signer_name}</span></p>
+          <p className="text-gray-600">Signing as <span className="font-medium">{linkData?.signer_name}</span></p>
         </div>
       </header>
 
       <div className="max-w-4xl mx-auto p-6">
-        {/* Document Preview */}
+        {/* Document Preview with Signature Markers */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-6">
           <div className="flex items-center gap-4 mb-4">
             <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary text-2xl">📄</div>
             <div>
               <h2 className="text-xl font-bold">Document Ready for Signature</h2>
-              <p className="text-gray-500">Review the document and sign below</p>
+              <p className="text-gray-500">{linkData?.document_title}</p>
+              {linkData?.signatures?.length > 0 && (
+                <p className="text-sm text-blue-600">{linkData.signatures.length} signature field(s) to sign</p>
+              )}
             </div>
           </div>
-          <div className="bg-gray-100 rounded-xl h-96 flex items-center justify-center">
-            <div className="text-center">
-              <div className="text-5xl mb-4">📄</div>
-              <p className="text-gray-600">Document Preview</p>
-            </div>
+          
+          {/* PDF Preview with Signature Markers */}
+          <div className="bg-gray-100 rounded-xl overflow-hidden relative" style={{ height: '400px' }}>
+            {linkData?.document_url ? (
+              <>
+                <iframe
+                  src={linkData.document_url}
+                  className="w-full h-full"
+                  title="Document Preview"
+                />
+                {/* Signature Markers Overlay */}
+                {linkData?.signatures?.map((sig: any) => (
+                  <div
+                    key={sig.id}
+                    className="absolute border-2 border-red-500 bg-red-100/50 rounded flex items-center justify-center"
+                    style={{
+                      left: `${sig.x_percent}%`,
+                      top: `${sig.y_percent}%`,
+                      width: `${sig.width_percent || 15}%`,
+                      height: `${sig.height_percent || 5}%`,
+                    }}
+                  >
+                    <span className="text-2xl">✍️</span>
+                  </div>
+                ))}
+              </>
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-gray-500">Document preview not available</p>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Signature Area */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
           <h2 className="text-xl font-bold mb-4">Sign Document</h2>
+          
+          {linkData?.signatures?.length === 0 && (
+            <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-700">
+              No signature fields found for this document.
+            </div>
+          )}
           
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">Your Signature</label>
@@ -133,15 +181,14 @@ export default function SigningPage() {
           <div className="flex gap-4">
             <button
               onClick={() => setShowConfirm(true)}
-              disabled={!signatureText.trim()}
-              className="flex-1 px-6 py-4 bg-success text-white rounded-xl font-semibold hover:bg-green-700 transition-colors disabled:opacity-50"
+              disabled={!signatureText.trim() || !linkData?.signatures?.length}
+              className="flex-1 px-6 py-4 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition-colors disabled:opacity-50"
             >
               ✓ Sign Document
             </button>
             <button
-              onClick={() => rejectMutation.mutate()}
-              disabled={rejectMutation.isPending}
-              className="px-6 py-4 bg-red-50 text-danger rounded-xl font-semibold hover:bg-red-100 transition-colors"
+              onClick={() => window.location.href = '/sign/rejected'}
+              className="px-6 py-4 bg-red-50 text-red-600 rounded-xl font-semibold hover:bg-red-100 transition-colors"
             >
               Decline
             </button>
@@ -163,10 +210,10 @@ export default function SigningPage() {
             <div className="flex gap-3">
               <button
                 onClick={handleSign}
-                disabled={signMutation.isPending}
-                className="flex-1 px-4 py-3 bg-success text-white rounded-xl font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
+                disabled={signing}
+                className="flex-1 px-4 py-3 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition-colors disabled:opacity-50"
               >
-                {signMutation.isPending ? 'Signing...' : 'Confirm & Sign'}
+                {signing ? 'Signing...' : 'Confirm & Sign'}
               </button>
               <button
                 onClick={() => setShowConfirm(false)}

@@ -72,7 +72,7 @@ export default function UploadDocument() {
     setError('');
 
     try {
-      const document = await uploadDocument(selectedFile, title);
+      await uploadDocument(selectedFile, title);
       navigate('/dashboard/documents');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Upload failed');

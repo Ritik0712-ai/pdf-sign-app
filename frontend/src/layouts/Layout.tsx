@@ -1,5 +1,6 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import type { AppUser } from '../context/AuthContext';
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: '📊' },
@@ -9,7 +10,7 @@ const navItems = [
 ];
 
 export default function Layout() {
-  const { user, signOut } = useAuth();
+  const { user, signOut } = useAuth() as { user: AppUser | null; signOut: () => Promise<void> };
   const location = useLocation();
   const navigate = useNavigate();
 

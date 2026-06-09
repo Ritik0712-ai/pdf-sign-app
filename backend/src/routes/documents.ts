@@ -172,6 +172,68 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Update document status
+router.patch('/:id', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new AppError('No token provided', 401);
+    }
+
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
+    if (authError || !user) {
+      throw new AppError('Invalid token', 401);
+    }
+
+    const { status } = req.body;
+    
+    if (!status) {
+      throw new AppError('Status is required', 400);
+    }
+
+    if (!['draft', 'pending', 'signed', 'rejected', 'expired'].includes(status)) {
+      throw new AppError('Invalid status', 400);
+    }
+
+    // Get document to check ownership
+    const { data: document, error: fetchError } = await supabaseAdmin
+      .from('documents')
+      .select('*')
+      .eq('id', req.params.id)
+      .eq('owner_id', user.id)
+      .single();
+
+    if (fetchError || !document) {
+      throw new AppError('Document not found', 404);
+    }
+
+    // Update document status
+    const { data: updatedDoc, error: updateError } = await supabaseAdmin
+      .from('documents')
+      .update({ status })
+      .eq('id', req.params.id)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
+
+    res.json({
+      success: true,
+      data: { document: updatedDoc },
+      message: 'Document status updated',
+    });
+  } catch (error) {
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({ success: false, message: error.message });
+    } else {
+      console.error('Update document error:', error);
+      res.status(500).json({ success: false, message: 'Failed to update document' });
+    }
+  }
+});
+
 // Delete document
 router.delete('/:id', async (req, res) => {
   try {

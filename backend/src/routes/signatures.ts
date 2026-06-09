@@ -91,7 +91,7 @@ router.get('/document/:documentId', async (req, res) => {
   }
 });
 
-// Update signature (sign/reject)
+// Update signature (sign/reject or position update)
 router.patch('/:id', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
@@ -106,19 +106,39 @@ router.patch('/:id', async (req, res) => {
       throw new AppError('Invalid token', 401);
     }
 
-    const { status, signature_value } = req.body;
+    const { status, signature_value, x_percent, y_percent } = req.body;
 
-    if (!['signed', 'rejected'].includes(status)) {
-      throw new AppError('Invalid status', 400);
+    // Build update data
+    const updateData: any = {};
+    
+    // Handle position update (no status required)
+    if (x_percent !== undefined && y_percent !== undefined) {
+      if (x_percent < 0 || x_percent > 100 || y_percent < 0 || y_percent > 100) {
+        throw new AppError('Coordinates must be between 0 and 100', 400);
+      }
+      updateData.x_percent = x_percent;
+      updateData.y_percent = y_percent;
     }
-
-    const updateData: any = { status };
-    if (status === 'signed') {
-      updateData.signed_at = new Date().toISOString();
-      updateData.signer_id = user.id;
+    
+    // Handle status update
+    if (status) {
+      if (!['signed', 'rejected'].includes(status)) {
+        throw new AppError('Invalid status', 400);
+      }
+      updateData.status = status;
+      if (status === 'signed') {
+        updateData.signed_at = new Date().toISOString();
+        // Don't set signer_id for external signers (they may not have accounts)
+        // updateData.signer_id = user.id;
+      }
     }
+    
     if (signature_value) {
       updateData.signature_value = signature_value;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      throw new AppError('No valid update data provided', 400);
     }
 
     const { data: signature, error } = await supabaseAdmin
@@ -182,8 +202,8 @@ router.post('/link', async (req, res) => {
       throw new AppError('No token provided', 401);
     }
 
-    const token = authHeader.split(' ')[1];
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    const bearerToken = authHeader.split(' ')[1];
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(bearerToken);
 
     if (authError || !user) {
       throw new AppError('Invalid token', 401);
@@ -210,10 +230,33 @@ router.post('/link', async (req, res) => {
       throw new AppError('Not authorized to create link for this document', 403);
     }
 
+    // Check if user exists in user_profiles, if not create it
+    const { data: profile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('id')
+      .eq('id', user.id)
+      .single();
+    
+    if (!profile) {
+      // Create user profile
+      await supabaseAdmin
+        .from('user_profiles')
+        .insert({
+          id: user.id,
+          name: user.email?.split('@')[0] || 'User',
+          email: user.email || '',
+        });
+    }
+
+    // Generate unique signing token
+    const crypto = require('crypto');
+    const signingToken = crypto.randomBytes(32).toString('hex');
+    
     const { data: link, error } = await supabaseAdmin
       .from('signing_links')
       .insert({
         document_id: documentId,
+        token: signingToken,
         signer_name: signerName,
         signer_email: signerEmail || null,
         expires_at: expiresAt || null,
@@ -246,13 +289,14 @@ router.post('/link', async (req, res) => {
 // Validate signing token (public)
 router.get('/link/:token', async (req, res) => {
   try {
-    const { data: link, error } = await supabaseAdmin
+    // First get the signing link
+    const { data: link, error: linkError } = await supabaseAdmin
       .from('signing_links')
-      .select('*, documents!inner(id, title, original_file_url, owner_id)')
+      .select('*')
       .eq('token', req.params.token)
       .single();
 
-    if (error || !link) {
+    if (linkError || !link) {
       return res.status(404).json({ success: false, message: 'Signing link not found' });
     }
 
@@ -264,13 +308,32 @@ router.get('/link/:token', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Signing link has expired' });
     }
 
+    // Then get the document
+    const { data: document, error: docError } = await supabaseAdmin
+      .from('documents')
+      .select('id, title, original_file_url')
+      .eq('id', link.document_id)
+      .single();
+
+    if (docError || !document) {
+      return res.status(404).json({ success: false, message: 'Document not found' });
+    }
+
+    // Get signature fields for this document
+    const { data: signatures } = await supabaseAdmin
+      .from('signatures')
+      .select('id, page_number, x_percent, y_percent, status')
+      .eq('document_id', link.document_id)
+      .eq('status', 'pending');
+
     res.json({ 
       success: true, 
       data: {
         document_id: link.document_id,
         signer_name: link.signer_name,
-        document_title: link.documents.title,
-        document_url: link.documents.original_file_url,
+        document_title: document.title,
+        document_url: document.original_file_url,
+        signatures: signatures || [],
       }
     });
   } catch (error) {

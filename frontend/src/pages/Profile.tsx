@@ -58,7 +58,7 @@ export default function Profile() {
       const filename = `${session.user.id}/${Date.now()}.${ext}`;
 
       // Upload to Supabase Storage
-      const { data, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filename, file, {
           cacheControl: '3600',

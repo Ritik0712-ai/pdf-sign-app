@@ -1,12 +1,17 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getDocuments, deleteDocument, Document } from '../api/documents';
+import { api } from '../api/axios';
 
 export default function Documents() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [shareDocId, setShareDocId] = useState<string | null>(null);
+  const [signerName, setSignerName] = useState('');
+  const [signingLink, setSigningLink] = useState('');
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     loadDocuments();
@@ -133,6 +138,16 @@ export default function Documents() {
 
                 {/* Actions */}
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setShareDocId(doc.id);
+                      setSigningLink('');
+                      setSignerName('');
+                    }}
+                    className="px-3 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  >
+                    📤 Share
+                  </button>
                   <Link
                     to={`/dashboard/documents/${doc.id}`}
                     className="px-3 py-2 text-sm font-medium text-primary hover:bg-blue-50 rounded-lg transition-colors"
@@ -150,6 +165,85 @@ export default function Documents() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Share Modal */}
+      {shareDocId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Share Document for Signing</h2>
+              <button 
+                onClick={() => setShareDocId(null)}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ✕
+              </button>
+            </div>
+
+            {!signingLink ? (
+              <>
+                <p className="text-gray-600 mb-4">Enter signer details to generate a unique signing link.</p>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Signer Name *</label>
+                    <input
+                      type="text"
+                      value={signerName}
+                      onChange={(e) => setSignerName(e.target.value)}
+                      placeholder="John Doe"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    />
+                  </div>
+
+                  <button
+                    onClick={async () => {
+                      if (!signerName.trim()) return;
+                      setGenerating(true);
+                      try {
+                        const response = await api.post('/signatures/link', {
+                          documentId: shareDocId,
+                          signerName: signerName.trim(),
+                        });
+                        if (response.data.success) {
+                          setSigningLink(window.location.origin + response.data.data.signingUrl);
+                        }
+                      } catch (err) {
+                        console.error('Failed to generate link:', err);
+                      } finally {
+                        setGenerating(false);
+                      }
+                    }}
+                    disabled={!signerName.trim() || generating}
+                    className="w-full py-3 bg-primary hover:bg-primary-hover text-white font-semibold rounded-xl transition-colors disabled:opacity-50"
+                  >
+                    {generating ? 'Generating...' : 'Generate Signing Link'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-gray-600 mb-4">Share this link with the signer:</p>
+                
+                <div className="bg-gray-100 rounded-xl p-3 mb-4 break-all">
+                  <p className="text-sm text-gray-500">Signing Link:</p>
+                  <p className="font-medium text-blue-600">{signingLink}</p>
+                </div>
+
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(signingLink);
+                    alert('Link copied to clipboard!');
+                  }}
+                  className="w-full py-3 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-xl transition-colors"
+                >
+                  📋 Copy Link
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>
