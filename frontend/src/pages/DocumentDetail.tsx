@@ -19,6 +19,7 @@ export default function DocumentDetail() {
   const [signerEmail, setSignerEmail] = useState('');
   const [signingLink, setSigningLink] = useState('');
   const [generating, setGenerating] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
   const [totalPages, setTotalPages] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -71,6 +72,31 @@ export default function DocumentDetail() {
     alert('Link copied to clipboard!');
   };
 
+  const handleGenerateSignedPdf = async () => {
+    setGeneratingPdf(true);
+    try {
+      const response = await api.post(`/documents/${id}/generate-signed`);
+      if (response.data.success && response.data.data.signedFileUrl) {
+        // Open the signed PDF in a new tab
+        window.open(response.data.data.signedFileUrl, '_blank');
+        // Refresh document to get updated signed_file_url
+        loadData();
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to generate signed PDF');
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
+
+  const handleDownloadSignedPdf = () => {
+    if (document.signed_file_url) {
+      window.open(document.signed_file_url, '_blank');
+    } else {
+      handleGenerateSignedPdf();
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -103,6 +129,15 @@ export default function DocumentDetail() {
           </p>
         </div>
         <div className="flex gap-2">
+          {document.status === 'signed' && (
+            <button
+              onClick={handleDownloadSignedPdf}
+              disabled={generatingPdf}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
+            >
+              {generatingPdf ? '⏳ Generating...' : '📥 Download Signed PDF'}
+            </button>
+          )}
           <button
             onClick={() => setShowShareModal(true)}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { supabaseAdmin } from '../config/supabase.js';
 import { AppError } from '../middleware/error.js';
+import { generateSignedPdf } from '../services/pdfGenerator.js';
 
 const router = Router();
 
@@ -279,6 +280,60 @@ router.delete('/:id', async (req, res) => {
     } else {
       console.error('Delete document error:', error);
       res.status(500).json({ success: false, message: 'Failed to delete document' });
+    }
+  }
+});
+
+// Generate signed PDF
+router.post('/:id/generate-signed', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new AppError('No token provided', 401);
+    }
+
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
+    if (authError || !user) {
+      throw new AppError('Invalid token', 401);
+    }
+
+    // Verify document ownership
+    const { data: document, error: fetchError } = await supabaseAdmin
+      .from('documents')
+      .select('*')
+      .eq('id', req.params.id)
+      .eq('owner_id', user.id)
+      .single();
+
+    if (fetchError || !document) {
+      throw new AppError('Document not found', 404);
+    }
+
+    // Check if document is signed
+    if (document.status !== 'signed') {
+      throw new AppError('Document must be signed before generating PDF', 400);
+    }
+
+    // Generate signed PDF
+    const result = await generateSignedPdf(req.params.id);
+
+    if (!result.success) {
+      throw new AppError(result.message, 500);
+    }
+
+    res.json({
+      success: true,
+      data: { signedFileUrl: result.signedFileUrl },
+      message: 'Signed PDF generated successfully',
+    });
+  } catch (error) {
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({ success: false, message: error.message });
+    } else {
+      console.error('Generate signed PDF error:', error);
+      res.status(500).json({ success: false, message: 'Failed to generate signed PDF' });
     }
   }
 });
