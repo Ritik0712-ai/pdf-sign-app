@@ -8,6 +8,7 @@ export default function SigningPage() {
   const [signatureText, setSignatureText] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
   const [signed, setSigned] = useState(false);
+  const [rejected, setRejected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [linkData, setLinkData] = useState<any>(null);
   const [error, setError] = useState('');
@@ -61,6 +62,31 @@ export default function SigningPage() {
     }
   };
 
+  const handleReject = async () => {
+    if (!linkData?.document_id) return;
+    
+    setSigning(true);
+    try {
+      // Update document status to 'rejected'
+      await api.patch(`/documents/${linkData.document_id}`, {
+        status: 'rejected'
+      });
+      
+      // Update all signatures to rejected
+      for (const sig of linkData.signatures) {
+        await api.patch(`/signatures/${sig.id}`, {
+          status: 'rejected'
+        });
+      }
+      
+      setRejected(true);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to reject');
+    } finally {
+      setSigning(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -90,6 +116,24 @@ export default function SigningPage() {
           <p className="text-gray-600 mb-6">Thank you for signing.</p>
           <Link
             to="/sign/success"
+            className="px-6 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary-hover transition-colors"
+          >
+            Done
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (rejected) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">❌</div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Document Declined</h1>
+          <p className="text-gray-600 mb-6">The document has been declined.</p>
+          <Link
+            to="/sign/rejected"
             className="px-6 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary-hover transition-colors"
           >
             Done
@@ -187,10 +231,11 @@ export default function SigningPage() {
               ✓ Sign Document
             </button>
             <button
-              onClick={() => window.location.href = '/sign/rejected'}
-              className="px-6 py-4 bg-red-50 text-red-600 rounded-xl font-semibold hover:bg-red-100 transition-colors"
+              onClick={handleReject}
+              disabled={signing}
+              className="px-6 py-4 bg-red-50 text-red-600 rounded-xl font-semibold hover:bg-red-100 transition-colors disabled:opacity-50"
             >
-              Decline
+              {signing ? 'Processing...' : 'Decline'}
             </button>
           </div>
         </div>
