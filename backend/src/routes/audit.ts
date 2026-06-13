@@ -67,7 +67,6 @@ export const createAuditLog = async (data: {
       .from('audit_logs')
       .insert({
         document_id: data.document_id,
-        actor_user_id: data.actor_user_id,
         action: data.action,
         ip_address: data.ip_address,
         user_agent: data.user_agent,
