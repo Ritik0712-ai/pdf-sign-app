@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { supabaseAdmin } from '../config/supabase.js';
 import { AppError } from '../middleware/error.js';
 import { generateSignedPdf } from '../services/pdfGenerator.js';
+import { createAuditLog } from './audit.js';
 
 const router = Router();
 
@@ -157,6 +158,16 @@ router.post('/', async (req, res) => {
       console.error('Create document error:', error);
       throw new AppError('Failed to create document: ' + error.message, 500);
     }
+
+    // Create audit log
+    await createAuditLog({
+      document_id: document.id,
+      actor_user_id: user.id,
+      action: 'DOCUMENT_UPLOADED',
+      ip_address: req.ip || req.socket.remoteAddress || 'unknown',
+      user_agent: req.headers['user-agent'] || null,
+      metadata: { title: document.title },
+    });
 
     res.status(201).json({
       success: true,

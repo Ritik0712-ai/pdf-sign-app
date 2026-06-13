@@ -150,6 +150,12 @@ export default function DocumentDetail() {
           >
             ✍️ Place Signatures {signatures.length > 0 && `(${signatures.length})`}
           </Link>
+          <Link
+            to={`/dashboard/documents/${id}/audit`}
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+          >
+            📋 Audit
+          </Link>
           <span className={`px-4 py-2 rounded-full text-sm font-medium ${
             document.status === 'signed' ? 'bg-green-100 text-green-700' :
             document.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
