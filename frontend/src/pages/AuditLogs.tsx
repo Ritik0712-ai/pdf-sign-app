@@ -19,7 +19,7 @@ export default function AuditLogs() {
   const { data: logs, isLoading } = useQuery({
     queryKey: ['audit-logs', id],
     queryFn: async () => {
-      const response = await api.get(`/api/audit/${id}`);
+      const response = await api.get(`/audit/${id}`);
       return response.data.data as AuditLog[];
     },
     enabled: !!id,
