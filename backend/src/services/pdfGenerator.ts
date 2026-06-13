@@ -70,25 +70,34 @@ export async function generateSignedPdf(documentId: string): Promise<GenerateSig
       const { width: pageWidth, height: pageHeight } = page.getSize();
 
       // Convert percentage to pixels
-      // Note: PDF coordinates start from bottom-left, so we need to flip Y
+      // PDF coordinates start from bottom-left (0,0)
+      // Browser uses top-left (0,0), so we need to flip Y
       const xPixels = (sig.x_percent / 100) * pageWidth;
-      const yPixels = pageHeight - (sig.y_percent / 100) * pageHeight; // Flip Y
+      // Flip Y: (100 - y_percent) because 0% in browser = top, but in PDF = bottom
+      const yPixels = ((100 - sig.y_percent) / 100) * pageHeight;
+
+      // Get signature box dimensions
+      const boxWidth = (sig.width_percent / 100) * pageWidth;
+      const boxHeight = (sig.height_percent / 100) * pageHeight;
+
+      // Draw signature text in the center of the box
+      const textX = xPixels + 5;
+      const textY = yPixels - boxHeight / 2 - 5; // Center vertically, adjust for baseline
 
       // Draw signature text
       page.drawText(sig.signature_value || 'Signed', {
-        x: xPixels,
-        y: yPixels - 10, // Adjust for text baseline
-        size: 14,
+        x: textX,
+        y: textY,
+        size: 12,
         font: helveticaFont,
-        color: rgb(0, 0, 0.5), // Dark blue color
+        color: rgb(0, 0, 0.7), // Dark gray
       });
 
       // Draw a line under the signature
-      const lineWidth = (sig.width_percent / 100) * pageWidth;
       page.drawLine({
-        start: { x: xPixels, y: yPixels - 12 },
-        end: { x: xPixels + lineWidth, y: yPixels - 12 },
-        thickness: 1,
+        start: { x: xPixels, y: yPixels - boxHeight + 2 },
+        end: { x: xPixels + boxWidth, y: yPixels - boxHeight + 2 },
+        thickness: 0.5,
         color: rgb(0, 0, 0.5),
       });
     }
