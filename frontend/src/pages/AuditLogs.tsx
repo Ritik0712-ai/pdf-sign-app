@@ -10,25 +10,25 @@ const actionIcons: Record<string, string> = {
   DOCUMENT_REJECTED: '❌',
   LINK_CREATED: '🔗',
   SIGNATURE_PLACED: '✍️',
-  PDF_DOWNLOADED: '📥',
+  PDF_DOWNLOADED: '��',
 };
 
 export default function AuditLogs() {
-  const { documentId } = useParams<{ documentId: string }>();
+  const { id } = useParams<{ id: string }>();
 
   const { data: logs, isLoading } = useQuery({
-    queryKey: ['audit-logs', documentId],
+    queryKey: ['audit-logs', id],
     queryFn: async () => {
-      const response = await api.get(`/api/audit/${documentId}`);
+      const response = await api.get(`/api/audit/${id}`);
       return response.data.data as AuditLog[];
     },
-    enabled: !!documentId,
+    enabled: !!id,
   });
 
   return (
     <div>
       <div className="mb-8">
-        <Link to={`/dashboard/documents/${documentId}`} className="text-sm text-gray-500 hover:text-primary mb-2 inline-block">
+        <Link to={`/dashboard/documents/${id}`} className="text-sm text-gray-500 hover:text-primary mb-2 inline-block">
           ← Back to Document
         </Link>
         <h1 className="text-3xl font-bold text-gray-900">Audit Logs</h1>

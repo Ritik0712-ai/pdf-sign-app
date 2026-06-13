@@ -87,8 +87,8 @@ function AppRoutes() {
         <Route path="upload" element={<UploadDocument />} />
 <Route path="documents/:id" element={<DocumentDetail />} />
 <Route path="documents/:id/editor" element={<SignatureEditor />} />
-<Route path="audit/:documentId" element={<AuditLogs />} />
-        <Route path="profile" element={<Profile />} />
+<Route path="documents/:id/audit" element={<AuditLogs />} />
+<Route path="profile" element={<Profile />} />
       </Route>
 
       {/* Catch all */}
