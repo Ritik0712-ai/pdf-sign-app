@@ -39,6 +39,9 @@ function AuthCallback() {
   useEffect(() => {
     // Handle OAuth callback
     const handleCallback = async () => {
+      // Wait a moment for Supabase to process the callback
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session) {
@@ -47,7 +50,18 @@ function AuthCallback() {
         // Redirect to dashboard
         window.location.href = '/dashboard';
       } else {
-        window.location.href = '/login';
+        // Listen for auth state change
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+          if (session) {
+            localStorage.setItem('supabase_token', session.access_token);
+            window.location.href = '/dashboard';
+          } else {
+            window.location.href = '/login';
+          }
+        });
+        
+        // Cleanup subscription
+        return () => subscription.unsubscribe();
       }
     };
 
@@ -57,6 +71,7 @@ function AuthCallback() {
   return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <p className="ml-4 text-gray-600">Completing sign in...</p>
     </div>
   );
 }
