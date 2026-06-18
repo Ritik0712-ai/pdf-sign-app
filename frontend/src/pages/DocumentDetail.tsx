@@ -17,6 +17,8 @@ export default function DocumentDetail() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [signerName, setSignerName] = useState('');
   const [signerEmail, setSignerEmail] = useState('');
+  const [linkExpiration, setLinkExpiration] = useState('');
+  const [selectedSignature, setSelectedSignature] = useState<string>('');
   const [signingLink, setSigningLink] = useState('');
   const [generating, setGenerating] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
@@ -51,10 +53,20 @@ export default function DocumentDetail() {
     
     setGenerating(true);
     try {
+      // Calculate expiration date if selected
+      let expiresAt = null;
+      if (linkExpiration) {
+        const expDate = new Date();
+        expDate.setDate(expDate.getDate() + parseInt(linkExpiration));
+        expiresAt = expDate.toISOString();
+      }
+      
       const response = await api.post('/signatures/link', {
         documentId: id,
         signerName: signerName.trim(),
         signerEmail: signerEmail.trim() || null,
+        expiresAt,
+        signatureId: selectedSignature || null,
       });
       
       if (response.data.success) {
@@ -284,6 +296,40 @@ export default function DocumentDetail() {
                       placeholder="john@example.com"
                       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                     />
+                  </div>
+
+                  {signatures.length > 0 && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Assign to Signature (optional)</label>
+                      <select
+                        value={selectedSignature}
+                        onChange={(e) => setSelectedSignature(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
+                      >
+                        <option value="">All signatures</option>
+                        {signatures.map((sig, idx) => (
+                          <option key={sig.id} value={sig.id}>
+                            Signature {idx + 1} - Page {sig.page_number} {sig.status === 'signed' ? '(Already signed)' : ''}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-gray-500 mt-1">Leave empty to allow signer to sign all fields</p>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Link Expiration (optional)</label>
+                    <select
+                      value={linkExpiration}
+                      onChange={(e) => setLinkExpiration(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
+                    >
+                      <option value="">Never expires</option>
+                      <option value="1">1 day</option>
+                      <option value="7">7 days</option>
+                      <option value="14">14 days</option>
+                      <option value="30">30 days</option>
+                    </select>
                   </div>
 
                   <button

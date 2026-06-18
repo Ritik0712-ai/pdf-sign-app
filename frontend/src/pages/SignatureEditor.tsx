@@ -27,16 +27,6 @@ export default function SignatureEditor() {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
 
-  // Handle page change with proper scrolling
-  useEffect(() => {
-    if (currentPage > 0 && containerRef.current) {
-      // Scroll to the current page position
-      const scrollHeight = window.innerHeight || 800;
-      const targetScroll = (currentPage - 1) * scrollHeight;
-      window.scrollTo({ top: targetScroll, behavior: 'auto' });
-    }
-  }, [currentPage]);
-
   useEffect(() => {
     if (id) {
       loadData();
@@ -52,8 +42,6 @@ export default function SignatureEditor() {
       
       const sigs = await getSignaturesByDocument(id!);
       setSignatures(sigs);
-      
-      // Don't set totalPages here - it will be auto-detected by react-pdf's onLoadSuccess
     } catch (err: any) {
       setError(err.message || 'Failed to load data');
     } finally {
@@ -89,7 +77,6 @@ export default function SignatureEditor() {
       setPlacingMode(false);
       showSuccess('✅ Signature placed on page ' + currentPage);
       
-      // Update document status to 'pending' if it's still 'draft'
       if (document?.status === 'draft') {
         await api.patch(`/documents/${id}`, { status: 'pending' });
         setDocument({ ...document, status: 'pending' });
@@ -116,7 +103,6 @@ export default function SignatureEditor() {
     }
   };
 
-  // Drag handlers
   const handleDragStart = (e: React.MouseEvent, sig: Signature) => {
     e.stopPropagation();
     e.preventDefault();
@@ -145,13 +131,11 @@ export default function SignatureEditor() {
     let newX = ((e.clientX - rect.left - dragOffset.x) / rect.width) * 100;
     let newY = ((e.clientY - rect.top - dragOffset.y) / rect.height) * 100;
     
-    // Constrain to container bounds
     newX = Math.max(0, Math.min(80, newX));
     newY = Math.max(0, Math.min(92, newY));
     
     setDragPosition({ x: newX, y: newY });
     
-    // Update the signature position in the local state
     setSignatures(prev => prev.map(s => 
       s.id === draggingId 
         ? { ...s, x_percent: Math.round(newX * 100) / 100, y_percent: Math.round(newY * 100) / 100 }
@@ -170,7 +154,6 @@ export default function SignatureEditor() {
     
     setDraggingId(null);
     
-    // Update position in database using the API
     try {
       await updateSignaturePosition(
         draggingId,
@@ -179,7 +162,7 @@ export default function SignatureEditor() {
       );
       showSuccess('✅ Position saved');
     } catch (err: any) {
-      console.error('Failed to update signature position:', err);
+      console.error('Failed to update position:', err);
       setError(err.message || 'Failed to save position');
     }
   };
@@ -277,7 +260,7 @@ export default function SignatureEditor() {
         </div>
       </div>
 
-      {/* PDF Container - Show only ONE page at a time using react-pdf */}
+      {/* PDF Container */}
       <div className="max-w-4xl mx-auto px-4 mt-4 mb-32">
         <div 
           ref={containerRef}
@@ -286,10 +269,7 @@ export default function SignatureEditor() {
           onMouseUp={handleDragEnd}
           onMouseLeave={handleDragEnd}
           className={`relative bg-white rounded-xl overflow-hidden shadow-2xl border ${placingMode ? 'cursor-crosshair' : ''}`}
-          style={{ 
-            height: '75vh',
-            maxHeight: '700px'
-          }}
+          style={{ height: '75vh', maxHeight: '700px' }}
         >
           {document?.original_file_url ? (
             <Document
@@ -298,11 +278,6 @@ export default function SignatureEditor() {
               loading={
                 <div className="flex items-center justify-center h-full">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-                </div>
-              }
-              error={
-                <div className="flex items-center justify-center h-full text-red-500">
-                  Failed to load PDF
                 </div>
               }
             >
@@ -322,9 +297,9 @@ export default function SignatureEditor() {
             </div>
           )}
           
-          {/* Markers Overlay - Only for current page */}
+          {/* Markers Overlay */}
           <div className="absolute inset-0 pointer-events-none">
-            {pageSignatures.map(sig => (
+            {pageSignatures.map((sig, idx) => (
               <div
                 key={sig.id}
                 draggable
@@ -348,13 +323,15 @@ export default function SignatureEditor() {
                 }}
               >
                 <span className="text-2xl">📝</span>
+                <span className="absolute -top-5 text-xs font-bold text-blue-600 bg-white px-1 rounded">
+                  Sign {idx + 1}
+                </span>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     handleDeleteSignature(sig.id);
                   }}
                   className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                  title="Delete signature"
                 >
                   ✕
                 </button>
@@ -370,28 +347,30 @@ export default function SignatureEditor() {
           <button 
             onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
             disabled={currentPage === totalPages}
-            className="px-6 py-3 bg-gray-100 rounded-lg disabled:opacity-50 hover:bg-gray-200 font-medium flex items-center gap-2"
+            className="px-6 py-3 bg-gray-100 rounded-lg disabled:opacity-50 hover:bg-gray-200 font-medium"
           >
             Next →
           </button>
           
+          <span className="px-4 py-3 bg-gray-100 rounded-lg text-sm">
+            {signatures.length} signature{signatures.length !== 1 ? 's' : ''} placed
+          </span>
+          
           <button 
             onClick={() => {
-              if (confirm('Done placing signatures? You can always come back to adjust positions.')) {
+              if (confirm('Done placing signatures?')) {
                 window.location.href = `/dashboard/documents/${id}`;
               }
             }}
-            className="px-6 py-3 bg-green-500 text-white rounded-lg font-medium hover:bg-green-600 transition-colors"
+            className="px-6 py-3 bg-green-500 text-white rounded-lg font-medium hover:bg-green-600"
           >
-            ✓ Done - View Document
+            ✓ Done
           </button>
         </div>
       </div>
 
-      {/* Saving Indicator */}
       {saving && (
-        <div className="fixed bottom-20 right-4 bg-primary text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
-          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+        <div className="fixed bottom-20 right-4 bg-primary text-white px-4 py-2 rounded-lg shadow-lg">
           Saving...
         </div>
       )}

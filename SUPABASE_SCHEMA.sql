@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS public.signatures (
 CREATE TABLE IF NOT EXISTS public.signing_links (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     document_id UUID NOT NULL REFERENCES public.documents(id) ON DELETE CASCADE,
+    signature_id UUID REFERENCES public.signatures(id) ON DELETE SET NULL,
     token TEXT NOT NULL UNIQUE,
     signer_name VARCHAR(100) NOT NULL,
     signer_email VARCHAR(255),

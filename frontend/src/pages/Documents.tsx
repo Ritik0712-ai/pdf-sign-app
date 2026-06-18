@@ -5,6 +5,7 @@ import { api } from '../api/axios';
 
 export default function Documents() {
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [filteredDocuments, setFilteredDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -12,16 +13,41 @@ export default function Documents() {
   const [signerName, setSignerName] = useState('');
   const [signingLink, setSigningLink] = useState('');
   const [generating, setGenerating] = useState(false);
+  
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   useEffect(() => {
     loadDocuments();
   }, []);
+
+  // Filter documents when search or filter changes
+  useEffect(() => {
+    let filtered = [...documents];
+    
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(doc => 
+        doc.title.toLowerCase().includes(query)
+      );
+    }
+    
+    // Filter by status
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(doc => doc.status === statusFilter);
+    }
+    
+    setFilteredDocuments(filtered);
+  }, [documents, searchQuery, statusFilter]);
 
   const loadDocuments = async () => {
     try {
       setLoading(true);
       const docs = await getDocuments();
       setDocuments(docs);
+      setFilteredDocuments(docs);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load documents');
     } finally {
@@ -68,9 +94,17 @@ export default function Documents() {
     return styles[status] || styles.draft;
   };
 
+  const statusCounts = {
+    all: documents.length,
+    draft: documents.filter(d => d.status === 'draft').length,
+    pending: documents.filter(d => d.status === 'pending').length,
+    signed: documents.filter(d => d.status === 'signed').length,
+    rejected: documents.filter(d => d.status === 'rejected').length,
+  };
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
@@ -88,27 +122,91 @@ export default function Documents() {
         </Link>
       </div>
 
+      {/* Search and Filter */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-6">
+        <div className="flex flex-col md:flex-row gap-4">
+          {/* Search */}
+          <div className="flex-1 relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search documents by title..."
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+            />
+          </div>
+          
+          {/* Status Filter */}
+          <div className="flex gap-2 flex-wrap">
+            {(['all', 'pending', 'signed', 'rejected', 'draft'] as const).map((status) => (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  statusFilter === status
+                    ? 'bg-primary text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {status.charAt(0).toUpperCase() + status.slice(1)}
+                {status !== 'all' && (
+                  <span className="ml-1 opacity-70">({statusCounts[status]})</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {error && (
         <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">
           {error}
         </div>
       )}
 
-      {documents.length === 0 ? (
+      {/* Results count */}
+      {(searchQuery || statusFilter !== 'all') && (
+        <p className="text-sm text-gray-500 mb-4">
+          Showing {filteredDocuments.length} of {documents.length} documents
+        </p>
+      )}
+
+      {filteredDocuments.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
-          <div className="text-5xl mb-4">📄</div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">No documents yet</h2>
-          <p className="text-gray-500 mb-6">Upload your first PDF to get started</p>
-          <Link
-            to="/dashboard/upload"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition-colors"
-          >
-            📤 Upload Document
-          </Link>
+          <div className="text-5xl mb-4">{searchQuery || statusFilter !== 'all' ? '🔍' : '📄'}</div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            {searchQuery || statusFilter !== 'all' ? 'No documents found' : 'No documents yet'}
+          </h2>
+          <p className="text-gray-500 mb-6">
+            {searchQuery || statusFilter !== 'all' 
+              ? 'Try adjusting your search or filter'
+              : 'Upload your first PDF to get started'
+            }
+          </p>
+          {!searchQuery && statusFilter === 'all' && (
+            <Link
+              to="/dashboard/upload"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition-colors"
+            >
+              📤 Upload Document
+            </Link>
+          )}
+          {(searchQuery || statusFilter !== 'all') && (
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setStatusFilter('all');
+              }}
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              Clear filters
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid gap-4">
-          {documents.map((doc) => (
+          {filteredDocuments.map((doc) => (
             <div
               key={doc.id}
               className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow"

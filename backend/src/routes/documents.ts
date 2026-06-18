@@ -231,6 +231,23 @@ router.patch('/:id', async (req, res) => {
 
     if (updateError) throw updateError;
 
+    // Create audit log for status changes
+    const auditAction = 
+      status === 'signed' ? 'DOCUMENT_SIGNED' : 
+      status === 'rejected' ? 'DOCUMENT_REJECTED' : 
+      'DOCUMENT_STATUS_CHANGED';
+    await createAuditLog({
+      document_id: req.params.id,
+      actor_user_id: user.id,
+      action: auditAction,
+      ip_address: req.ip || req.socket.remoteAddress || 'unknown',
+      user_agent: req.headers['user-agent'] || null,
+      metadata: { 
+        previous_status: document.status, 
+        new_status: status 
+      },
+    });
+
     res.json({
       success: true,
       data: { document: updatedDoc },
@@ -280,6 +297,16 @@ router.delete('/:id', async (req, res) => {
       .eq('id', req.params.id);
 
     if (deleteError) throw deleteError;
+
+    // Create audit log for document deletion
+    await createAuditLog({
+      document_id: req.params.id,
+      actor_user_id: user.id,
+      action: 'DOCUMENT_DELETED',
+      ip_address: req.ip || req.socket.remoteAddress || 'unknown',
+      user_agent: req.headers['user-agent'] || null,
+      metadata: { title: document.title },
+    });
 
     res.json({
       success: true,

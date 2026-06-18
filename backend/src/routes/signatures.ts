@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { supabaseAdmin } from '../config/supabase.js';
 import { AppError } from '../middleware/error.js';
+import { createAuditLog } from './audit.js';
+import { sendSigningRequest } from '../services/emailService.js';
 
 const router = Router();
 
@@ -45,6 +47,16 @@ router.post('/', async (req, res) => {
       .single();
 
     if (error) throw error;
+
+    // Create audit log
+    await createAuditLog({
+      document_id,
+      actor_user_id: null,
+      action: 'SIGNATURE_PLACED',
+      ip_address: req.ip || req.socket.remoteAddress || 'unknown',
+      user_agent: req.headers['user-agent'] || null,
+      metadata: { page_number, signature_id: signature.id },
+    });
 
     res.status(201).json({ success: true, data: { signature }, message: 'Signature placement saved' });
   } catch (error) {
@@ -209,10 +221,28 @@ router.post('/link', async (req, res) => {
       throw new AppError('Invalid token', 401);
     }
 
-    const { documentId, signerName, signerEmail, expiresAt } = req.body;
+    const { documentId, signerName, signerEmail, expiresAt, signatureId } = req.body;
 
     if (!documentId || !signerName) {
       throw new AppError('documentId and signerName are required', 400);
+    }
+
+    // Validate signature_id if provided
+    if (signatureId) {
+      const { data: sig, error: sigError } = await supabaseAdmin
+        .from('signatures')
+        .select('id, status')
+        .eq('id', signatureId)
+        .eq('document_id', documentId)
+        .single();
+      
+      if (sigError || !sig) {
+        throw new AppError('Invalid signature ID', 400);
+      }
+      
+      if (sig.status === 'signed') {
+        throw new AppError('This signature has already been signed', 400);
+      }
     }
 
     // Verify user owns the document
@@ -262,11 +292,43 @@ router.post('/link', async (req, res) => {
         expires_at: expiresAt || null,
         is_active: true,
         created_by: user.id,
+        signature_id: signatureId || null,
       })
       .select()
       .single();
 
     if (error) throw error;
+
+    // Create audit log for link creation
+    await createAuditLog({
+      document_id: documentId,
+      actor_user_id: null,
+      action: 'LINK_CREATED',
+      ip_address: req.ip || req.socket.remoteAddress || 'unknown',
+      user_agent: req.headers['user-agent'] || null,
+      metadata: { signer_name: signerName, signer_email: signerEmail },
+    });
+
+    // Send email notification to signer (if email provided)
+    const baseUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const signingUrl = `${baseUrl}/sign/${link.token}`;
+    
+    // Get document title for email
+    const { data: docData } = await supabaseAdmin
+      .from('documents')
+      .select('title')
+      .eq('id', documentId)
+      .single();
+    
+    if (signerEmail) {
+      sendSigningRequest({
+        signerEmail,
+        signerName,
+        documentTitle: docData?.title || 'Document',
+        signingUrl,
+        expiresAt: expiresAt || undefined,
+      }).catch(err => console.error('Email notification failed:', err));
+    }
 
     res.status(201).json({
       success: true,

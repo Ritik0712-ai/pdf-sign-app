@@ -8,8 +8,18 @@ export default function Dashboard() {
   const [documents, setDocuments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Refresh when page becomes visible
   useEffect(() => {
     loadDocuments();
+    
+    // Also refresh when page becomes visible again (e.g., user comes back from signing)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadDocuments();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
   const loadDocuments = async () => {
