@@ -41,14 +41,12 @@ function AuthCallback() {
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const errorDescription = hashParams.get('error_description');
     if (errorDescription) {
-      console.error('AuthCallback - OAuth error:', errorDescription);
       window.location.replace('/login?error=' + encodeURIComponent(errorDescription));
       return;
     }
 
     // Listen for auth state change FIRST - this catches the SIGNED_IN event
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('AuthCallback - Auth state changed:', event);
       if (event === 'SIGNED_IN' && session) {
         localStorage.setItem('supabase_token', session.access_token);
         // Clean URL fragment and redirect
@@ -59,11 +57,9 @@ function AuthCallback() {
 
     // Also detect session from URL hash - Supabase puts tokens in the hash
     if (window.location.hash) {
-      console.log('AuthCallback - Hash detected, processing...');
       // Give Supabase a moment to detect the session from URL hash
       setTimeout(async () => {
         const { data: { session } } = await supabase.auth.getSession();
-        console.log('AuthCallback - Session after hash:', session);
         if (session) {
           localStorage.setItem('supabase_token', session.access_token);
           window.history.replaceState(null, '', '/dashboard');
@@ -74,7 +70,6 @@ function AuthCallback() {
 
     // Fallback: redirect to login after 5 seconds if nothing happens
     const timeout = setTimeout(() => {
-      console.log('AuthCallback - Timeout, redirecting to login');
       window.location.replace('/login');
     }, 5000);
 

@@ -30,11 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const checkAuth = async () => {
       try {
         // Check Supabase session first (for Google OAuth)
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Session error:', error);
-        }
+        const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user) {
           setUser({
@@ -66,8 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Auth state changed:', event, session);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUser({
           id: session.user.id,
