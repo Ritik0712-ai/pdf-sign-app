@@ -1,57 +1,140 @@
-# PDF Sign - Document Signature App
+# 📄 PDF Sign - Document Signature App
 
-A secure, full-stack web application for digital document signing — upload PDFs, place signatures, share signing links, and generate legally traceable signed PDFs.
+> A secure, full-stack web application for digital document signing — upload PDFs, place signatures, share signing links, and generate legally traceable signed PDFs.
 
-## Tech Stack
+[![Status](https://img.shields.io/badge/Status-Live-success)](https://pdf-sign-app-opal.vercel.app)
+[![Frontend](https://img.shields.io/badge/Frontend-Vercel-black)](https://pdf-sign-app-opal.vercel.app)
+[![Backend](https://img.shields.io/badge/Backend-Render-46e3b7)](https://pdf-sign-app-rbj7.onrender.com)
+
+---
+
+## 🌐 Live Demo
+
+| Service | URL |
+|---------|-----|
+| **Frontend (Live App)** | https://pdf-sign-app-opal.vercel.app |
+| **Backend API** | https://pdf-sign-app-rbj7.onrender.com/api |
+| **GitHub Repo** | https://github.com/Ritik0712-ai/pdf-sign-app |
+
+---
+
+## ✨ Features
+
+### 🔐 Authentication
+- ✅ Email/Password Registration & Login
+- ✅ Google OAuth Integration
+- ✅ JWT-based session management
+- ✅ Protected routes & role-based access
+
+### 📄 Document Management
+- ✅ PDF Upload to Supabase Storage
+- ✅ Document Dashboard with status filtering
+- ✅ Document Detail view with audit trail
+- ✅ Delete & manage documents
+
+### ✍️ Signature Workflow
+- ✅ Drag & drop signature placement on PDF pages
+- ✅ Multiple signers per document
+- ✅ Unique signing tokens for each signer
+- ✅ Public signing links (no account required)
+- ✅ Email notifications via Resend
+- ✅ Reject with reason functionality
+
+### 📊 Tracking & Compliance
+- ✅ Audit logs (insert-only) for every action
+- ✅ Document status tracking: Draft → Pending → Signed / Rejected
+- ✅ Real-time updates
+
+### 🎨 UI/UX
+- ✅ Modern responsive design (Tailwind CSS)
+- ✅ Loading states & error handling
+- ✅ Toast notifications
+- ✅ User profile with avatar
+
+---
+
+## 🛠️ Tech Stack
 
 | Layer | Technology |
 |-------|------------|
-| Frontend | React + TypeScript + Tailwind CSS + TanStack Query |
-| Backend | Node.js + Express + TypeScript |
-| Database | Supabase PostgreSQL |
-| Storage | Supabase Storage |
-| Auth | Supabase Auth + JWT |
-| PDF | react-pdf + pdf-lib |
+| **Frontend** | React 18 + TypeScript + Vite + Tailwind CSS |
+| **State Management** | TanStack Query + React Context |
+| **PDF Viewer** | react-pdf + pdfjs-dist |
+| **Drag & Drop** | @dnd-kit |
+| **Backend** | Node.js + Express + TypeScript |
+| **Runtime** | tsx (TypeScript executor) |
+| **Database** | Supabase (PostgreSQL) |
+| **Storage** | Supabase Storage |
+| **Auth** | Supabase Auth + JWT |
+| **Email** | Resend |
+| **PDF Generation** | pdf-lib |
+| **Deployment** | Render (backend) + Vercel (frontend) |
 
-## Project Structure
+---
+
+## 📁 Project Structure
 
 ```
 Project/
-├── frontend/          # React application
+├── frontend/                    # React + Vite application
 │   ├── src/
-│   │   ├── api/          # Axios + Supabase setup
-│   │   ├── context/      # Auth context
-│   │   ├── layouts/      # Layout components
-│   │   ├── pages/        # Page components
-│   │   └── types/        # TypeScript types
+│   │   ├── api/                 # API clients (axios, supabase)
+│   │   ├── context/             # Auth context
+│   │   ├── layouts/             # Layout components
+│   │   ├── pages/               # Page components
+│   │   │   ├── Landing.tsx
+│   │   │   ├── Login.tsx
+│   │   │   ├── Register.tsx
+│   │   │   ├── Dashboard.tsx
+│   │   │   ├── Documents.tsx
+│   │   │   ├── UploadDocument.tsx
+│   │   │   ├── DocumentDetail.tsx
+│   │   │   ├── SignatureEditor.tsx
+│   │   │   ├── SigningPage.tsx
+│   │   │   ├── SigningSuccess.tsx
+│   │   │   ├── SigningRejected.tsx
+│   │   │   ├── AuditLogs.tsx
+│   │   │   └── Profile.tsx
+│   │   └── types/               # TypeScript types
+│   ├── vercel.json              # Vercel SPA routing config
 │   └── ...
 │
-├── backend/          # Express API
+├── backend/                     # Express API
 │   ├── src/
-│   │   ├── config/       # Environment + Supabase config
-│   │   ├── middleware/   # Auth, audit, error
-│   │   ├── routes/       # API routes
-│   │   └── types/        # TypeScript types
+│   │   ├── config/              # Environment + Supabase config
+│   │   ├── middleware/          # Auth, audit, error handling
+│   │   ├── routes/              # API routes
+│   │   │   ├── auth.ts          # /api/auth/*
+│   │   │   ├── documents.ts     # /api/documents/*
+│   │   │   ├── signatures.ts    # /api/signatures/*
+│   │   │   ├── audit.ts         # /api/audit/*
+│   │   │   └── profile.ts       # /api/profile/*
+│   │   ├── services/            # Email, PDF generation
+│   │   └── types/               # TypeScript types
 │   └── ...
 │
-├── README.md
-└── .gitignore
+├── SUPABASE_SCHEMA.sql          # Database schema
+├── STORAGE_POLICIES.sql         # Storage RLS policies
+├── DEPLOY.md                    # Deployment guide
+└── README.md                    # This file
 ```
 
-## Getting Started
+---
+
+## 🚀 Getting Started (Local Development)
 
 ### Prerequisites
-
 - Node.js 18+
 - npm or yarn
 - Supabase account
+- Resend account (for emails)
 
-### Setup
-
-1. **Clone and install**
+### Installation
 
 ```bash
-cd Project
+# Clone the repository
+git clone https://github.com/Ritik0712-ai/pdf-sign-app.git
+cd pdf-sign-app
 
 # Install backend dependencies
 cd backend
@@ -62,137 +145,198 @@ cd ../frontend
 npm install
 ```
 
-2. **Setup Supabase**
+### Supabase Setup
 
-- Create a project at [supabase.com](https://supabase.com)
-- Run the SQL schema from `SUPABASE_SCHEMA.sql`
-- Create storage buckets: `documents`, `signatures`
-- Enable Row Level Security (RLS) on all tables
+1. Create a project at [supabase.com](https://supabase.com)
+2. Run `SUPABASE_SCHEMA.sql` in SQL Editor
+3. Run `STORAGE_POLICIES.sql` to configure storage
+4. Create storage buckets: `documents`, `signatures`
+5. Enable Email + Google auth providers
 
-3. **Configure environment**
+### Environment Variables
 
-```bash
-# Backend
-cd backend
-cp .env.example .env
-# Edit .env with your Supabase credentials:
-# - SUPABASE_URL
-# - SUPABASE_SERVICE_ROLE_KEY
-# - JWT_SECRET
-
-# Frontend
-cd ../frontend
-cp .env.example .env
-# Edit .env with your Supabase credentials:
-# - VITE_SUPABASE_URL
-# - VITE_SUPABASE_ANON_KEY
+**Backend** (`backend/.env`):
+```env
+PORT=3001
+NODE_ENV=development
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+JWT_SECRET=your-random-secret
+CLIENT_URL=http://localhost:5173
+RESEND_API_KEY=your-resend-key
 ```
 
-### Supabase API Keys Reference
+**Frontend** (`frontend/.env`):
+```env
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
 
-| Key | Where to Use |
-|-----|--------------|
-| **Project URL** | Both `.env` files as `SUPABASE_URL` / `VITE_SUPABASE_URL` |
-| **anon public key** | Frontend `.env` as `VITE_SUPABASE_ANON_KEY` |
-| **service_role key** | Backend `.env` as `SUPABASE_SERVICE_ROLE_KEY` |
-
-4. **Start development servers**
+### Run Development Servers
 
 ```bash
-# Terminal 1 - Backend
+# Terminal 1 - Backend (port 3001)
 cd backend
 npm run dev
 
-# Terminal 2 - Frontend  
+# Terminal 2 - Frontend (port 5173)
 cd frontend
 npm run dev
 ```
 
-5. **Open the app in browser**
+Open http://localhost:5173 in your browser.
 
-| Service | URL |
-|---------|-----|
-| Frontend | http://localhost:5173 |
-| Backend API | http://localhost:3001/api/health |
+---
 
-## Features
+## 🌐 Production Deployment
 
-- [x] User Authentication (Supabase Auth + JWT)
-- [x] Email Registration & Login
-- [x] Google OAuth Integration
-- [x] Protected Routes
-- [x] PDF Upload (coming Day 4)
-- [x] Document Dashboard
-- [x] PDF Preview (coming Day 6)
-- [x] Signature Placement (drag & drop) (coming Day 8)
-- [x] Signing Links
-- [x] Audit Logs
-- [x] Status Tracking
+### Backend on Render
+- **Service Type**: Web Service
+- **Root Directory**: `backend`
+- **Build Command**: `npm install`
+- **Start Command**: `npx tsx src/server.ts`
+- **Environment Variables**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET`, `CLIENT_URL`
 
-## 14-Day Build Plan
+### Frontend on Vercel
+- **Root Directory**: `frontend`
+- **Framework Preset**: Vite
+- **Build Command**: `npm run build` (auto-detected)
+- **Environment Variables**: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+- **Special Config**: `vercel.json` for SPA routing
 
-| Week | Days | Focus |
-|------|------|-------|
-| Week 1 | Day 1-7 | Foundation + Auth + Documents |
-| Week 2 | Day 8-14 | Signatures + Workflow + Polish |
+### Supabase Auth Configuration
+- **Site URL**: `https://pdf-sign-app-opal.vercel.app`
+- **Redirect URLs**: 
+  - `https://pdf-sign-app-opal.vercel.app/*`
+  - `https://pdf-sign-app-opal.vercel.app/auth/callback`
 
-### Week 1: Foundation
-- **Day 1** ✅ Project Setup & Architecture
-- **Day 2** ✅ Authentication System (Supabase Auth)
-- **Day 3** Database Schema & User Management
-- **Day 4** ✅ Document Upload System
-- **Day 5** Documents Dashboard
-- **Day 6** PDF Viewer Integration (react-pdf)
-- **Day 7** Testing & Buffer Day
+### Google OAuth Setup
+1. Create OAuth credentials in [Google Cloud Console](https://console.cloud.google.com)
+2. Add redirect URI: `https://your-project.supabase.co/auth/v1/callback`
+3. Configure in Supabase → Authentication → Providers → Google
 
-### Week 2: Signatures & Polish
-- **Day 8** ✅ Signature Placement Engine (dnd-kit)
-- **Day 9** Signature Database Integration
-- **Day 10** PDF Generation Engine (pdf-lib)
-- **Day 11** Public Signing Workflow
-- **Day 12** Audit Logs & Status System
-- **Day 13** UI Polish & Deployment
-- **Day 14** Final Testing & Project Delivery
+---
 
-## API Endpoints
+## 📡 API Endpoints
 
-### Auth
+### Authentication
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/auth/register` | Register new user |
-| POST | `/api/auth/login` | Login user |
-| GET | `/api/auth/me` | Get current user |
+| `POST` | `/api/auth/register` | Register new user |
+| `POST` | `/api/auth/login` | Login with email/password |
+| `GET` | `/api/auth/me` | Get current user |
 
 ### Documents
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/documents` | List user's documents |
-| GET | `/api/documents/:id` | Get single document |
-| POST | `/api/documents/upload` | Upload new document |
-| DELETE | `/api/documents/:id` | Delete document |
+| `GET` | `/api/documents` | List user's documents |
+| `GET` | `/api/documents/:id` | Get single document |
+| `POST` | `/api/documents` | Create document record |
+| `PATCH` | `/api/documents/:id` | Update document status |
+| `DELETE` | `/api/documents/:id` | Delete document |
 
 ### Signatures
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/signatures` | Create signature placement |
-| GET | `/api/signatures/document/:id` | Get signatures for document |
-| PATCH | `/api/signatures/:id` | Update signature status |
-| POST | `/api/signatures/link` | Generate signing link |
-| GET | `/api/signatures/link/:token` | Validate signing token |
+| `POST` | `/api/signatures` | Create signature placement |
+| `GET` | `/api/signatures/document/:id` | Get signatures for document |
+| `PATCH` | `/api/signatures/:id` | Update signature status |
+| `POST` | `/api/signatures/link` | Generate signing link |
+| `GET` | `/api/signatures/link/:token` | Validate signing token |
 
 ### Audit
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/audit/:documentId` | Get audit logs |
+| `GET` | `/api/audit/:documentId` | Get audit logs |
 
-## Critical Rules
+### Profile
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/profile` | Get user profile |
+| `PATCH` | `/api/profile` | Update profile |
 
-⚠️ **Coordinates**: Always store signature positions as percentages (0-100), never pixels.
+---
 
-⚠️ **Signed PDFs**: Never overwrite the original — always generate a new signed version.
+## 🐛 Problems Faced & Solutions
 
-⚠️ **Audit Logs**: Insert-only — never update or delete audit records.
+### 1. Render Build Failure
+**Problem**: `Cannot find module 'dist/server.js'`  
+**Solution**: Changed start command to `npx tsx src/server.ts` to run TypeScript directly without compilation
 
-## License
+### 2. Missing Supabase Credentials
+**Problem**: Backend couldn't connect to Supabase  
+**Solution**: Added `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to Render environment variables
 
-MIT.
+### 3. Frontend Black Screen
+**Problem**: Vercel deployment showing black screen  
+**Solution**: Added `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to Vercel environment variables
+
+### 4. Localhost API in Production
+**Problem**: Frontend still pointing to `localhost:3001`  
+**Solution**: Updated `axios.ts` with production backend URL
+
+### 5. Vercel 404 on Routes
+**Problem**: `/auth/callback` returning 404  
+**Solution**: Added `vercel.json` with rewrite rules for SPA routing
+
+### 6. Google OAuth Not Working
+**Problem**: After Google login, redirects back to login  
+**Solution**: 
+- Added `onAuthStateChange` listener in AuthCallback
+- Properly handle OAuth tokens from URL hash fragment
+- Configured Google OAuth redirect URIs in Google Cloud Console + Supabase
+
+### 7. Audit Logs Foreign Key Issues
+**Problem**: Audit log queries failing  
+**Solution**: Fixed foreign key relationships and API paths
+
+---
+
+## 🔒 Security Features
+
+- ✅ Row Level Security (RLS) on all Supabase tables
+- ✅ JWT authentication for API endpoints
+- ✅ Tokenized signing links (single-use, time-limited)
+- ✅ Audit logs are insert-only (immutable)
+- ✅ Service role key only used server-side
+- ✅ CORS, Helmet, and rate limiting configured
+
+---
+
+## 📊 Database Schema
+
+### Tables
+- `users` - User profiles (linked to Supabase Auth)
+- `documents` - Document metadata
+- `signatures` - Signature placements & statuses
+- `signing_links` - Tokenized public signing links
+- `audit_logs` - Immutable audit trail
+
+### Storage Buckets
+- `documents` - Original uploaded PDFs
+- `signatures` - Signature images
+- `signed` - Generated signed PDFs
+
+---
+
+## 📜 License
+
+MIT
+
+---
+
+## 👨‍💻 Author
+
+**Ritik Agarwal**  
+GitHub: [@Ritik0712-ai](https://github.com/Ritik0712-ai)
+
+---
+
+## 🙏 Acknowledgments
+
+- [Supabase](https://supabase.com) - Backend infrastructure
+- [Resend](https://resend.com) - Email service
+- [Vercel](https://vercel.com) - Frontend hosting
+- [Render](https://render.com) - Backend hosting
+- [pdf-lib](https://pdf-lib.js.org) - PDF generation
+- [react-pdf](https://react-pdf.org) - PDF viewing
