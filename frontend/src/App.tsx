@@ -37,24 +37,40 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function AuthCallback() {
   useEffect(() => {
-    // Listen for auth state change FIRST - this is the key!
+    // Check if there's an error in URL fragment (e.g., from OAuth provider)
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const errorDescription = hashParams.get('error_description');
+    if (errorDescription) {
+      console.error('AuthCallback - OAuth error:', errorDescription);
+      window.location.replace('/login?error=' + encodeURIComponent(errorDescription));
+      return;
+    }
+
+    // Listen for auth state change FIRST - this catches the SIGNED_IN event
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('AuthCallback - Auth state changed:', event, session);
-      if (session) {
+      console.log('AuthCallback - Auth state changed:', event);
+      if (event === 'SIGNED_IN' && session) {
         localStorage.setItem('supabase_token', session.access_token);
-        // Use replace to avoid back-button issues
-        window.location.replace('/dashboard');
+        // Clean URL fragment and redirect
+        window.history.replaceState(null, '', '/dashboard');
+        window.location.href = '/dashboard';
       }
     });
 
-    // Also check current session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('AuthCallback - Initial session:', session);
-      if (session) {
-        localStorage.setItem('supabase_token', session.access_token);
-        window.location.replace('/dashboard');
-      }
-    });
+    // Also detect session from URL hash - Supabase puts tokens in the hash
+    if (window.location.hash) {
+      console.log('AuthCallback - Hash detected, processing...');
+      // Give Supabase a moment to detect the session from URL hash
+      setTimeout(async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('AuthCallback - Session after hash:', session);
+        if (session) {
+          localStorage.setItem('supabase_token', session.access_token);
+          window.history.replaceState(null, '', '/dashboard');
+          window.location.href = '/dashboard';
+        }
+      }, 500);
+    }
 
     // Fallback: redirect to login after 5 seconds if nothing happens
     const timeout = setTimeout(() => {
