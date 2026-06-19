@@ -37,41 +37,43 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function AuthCallback() {
   useEffect(() => {
-    // Handle OAuth callback
-    const handleCallback = async () => {
-      // Wait a moment for Supabase to process the callback
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      
+    // Listen for auth state change FIRST - this is the key!
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('AuthCallback - Auth state changed:', event, session);
       if (session) {
-        // Store the Supabase session token
         localStorage.setItem('supabase_token', session.access_token);
-        // Redirect to dashboard
-        window.location.href = '/dashboard';
-      } else {
-        // Listen for auth state change
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-          if (session) {
-            localStorage.setItem('supabase_token', session.access_token);
-            window.location.href = '/dashboard';
-          } else {
-            window.location.href = '/login';
-          }
-        });
-        
-        // Cleanup subscription
-        return () => subscription.unsubscribe();
+        // Use replace to avoid back-button issues
+        window.location.replace('/dashboard');
       }
-    };
+    });
 
-    handleCallback();
+    // Also check current session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('AuthCallback - Initial session:', session);
+      if (session) {
+        localStorage.setItem('supabase_token', session.access_token);
+        window.location.replace('/dashboard');
+      }
+    });
+
+    // Fallback: redirect to login after 5 seconds if nothing happens
+    const timeout = setTimeout(() => {
+      console.log('AuthCallback - Timeout, redirecting to login');
+      window.location.replace('/login');
+    }, 5000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      <p className="ml-4 text-gray-600">Completing sign in...</p>
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+        <p className="mt-4 text-gray-600">Completing sign in...</p>
+      </div>
     </div>
   );
 }
